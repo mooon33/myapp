@@ -1,4 +1,4 @@
-import { UserProfile, ClassType, WorkoutNode, InventoryItem } from './types';
+import { UserProfile, ClassType, WorkoutNode, InventoryItem, Guild, ChatMessage } from './types';
 
 export const MOCK_USER: UserProfile = {
   id: 'u-123',
@@ -19,6 +19,7 @@ export const MOCK_USER: UserProfile = {
     deadlift_1rm: 180,
   },
   streak: 12,
+  guildId: null,
 };
 
 export const MOCK_INVENTORY: InventoryItem[] = [
@@ -104,4 +105,64 @@ export const CAMPAIGN_MAP: WorkoutNode[] = [
       { id: 'ex-5', name: 'Deadlift PR Attempt', sets: 1, reps: 1, weight: 185 },
     ],
   },
+];
+
+export const MOCK_GUILDS: Guild[] = [
+  { 
+    id: 'g-1', 
+    name: 'Iron Legion', 
+    description: 'We lift heavy things and never skip leg day.', 
+    members: 42, 
+    maxMembers: 50, 
+    totalXp: 150000, 
+    rank: 1, 
+    icon: 'shield' 
+  },
+  { 
+    id: 'g-2', 
+    name: 'Morning Crew', 
+    description: '5AM workouts only. Discipline is key.', 
+    members: 10, 
+    maxMembers: 20, 
+    totalXp: 112000, 
+    rank: 2, 
+    icon: 'zap' 
+  },
+  { 
+    id: 'g-3', 
+    name: 'Cardio Kings', 
+    description: 'Run until you drop. Stamina builds character.', 
+    members: 28, 
+    maxMembers: 50, 
+    totalXp: 98000, 
+    rank: 3, 
+    icon: 'sword' 
+  },
+  { 
+    id: 'g-4', 
+    name: 'Squat Squad', 
+    description: 'Deep squats for deep thoughts.', 
+    members: 33, 
+    maxMembers: 40, 
+    totalXp: 88000, 
+    rank: 4, 
+    icon: 'crown' 
+  },
+  { 
+    id: 'g-5', 
+    name: 'Flex & Chill', 
+    description: 'Casual lifting and post-workout coffee.', 
+    members: 15, 
+    maxMembers: 30, 
+    totalXp: 45000, 
+    rank: 5, 
+    icon: 'shield' 
+  },
+];
+
+export const MOCK_CHAT_MESSAGES: ChatMessage[] = [
+  { id: 'm-1', senderId: 'u-55', senderName: 'GymRat99', text: 'Anyone hitting legs today?', timestamp: '10:30 AM' },
+  { id: 'm-2', senderId: 'u-42', senderName: 'BuffWizard', text: 'Always. Never skip leg day.', timestamp: '10:32 AM' },
+  { id: 'm-3', senderId: 'u-55', senderName: 'GymRat99', text: 'My squat max is stuck at 140kg though :/', timestamp: '10:33 AM' },
+  { id: 'm-4', senderId: 'u-42', senderName: 'BuffWizard', text: 'Have you tried a deload week? Works wonders for the nervous system.', timestamp: '10:35 AM' },
 ];

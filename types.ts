@@ -36,6 +36,7 @@ export interface UserProfile {
   attributes: Attributes;
   stats: Stats;
   streak: number;
+  guildId: string | null; // Track current guild
 }
 
 export interface InventoryItem extends Item {
@@ -68,4 +69,23 @@ export interface WorkoutLog {
   program_id: string;
   completed_at: string;
   total_xp_earned: number;
+}
+
+export interface Guild {
+  id: string;
+  name: string;
+  description: string;
+  members: number;
+  maxMembers: number;
+  totalXp: number;
+  rank: number;
+  icon: 'shield' | 'sword' | 'crown' | 'zap';
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: string;
 }

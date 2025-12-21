@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { UserProfile, WorkoutNode } from './types';
-import { MOCK_USER, CAMPAIGN_MAP, MOCK_INVENTORY } from './constants';
+import { UserProfile, WorkoutNode, Guild } from './types';
+import { MOCK_USER, CAMPAIGN_MAP, MOCK_INVENTORY, MOCK_GUILDS } from './constants';
 import CharacterDisplay from './components/CharacterDisplay';
 import WorkoutMap from './components/WorkoutMap';
 import ActiveSession from './components/ActiveSession';
 import Inventory from './components/Inventory';
+import GuildsView from './components/GuildsView';
 import { Map, User as UserIcon, Users, Dumbbell } from 'lucide-react';
 
 // Using a simple View state instead of Router for this demo
@@ -14,6 +15,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('map');
   const [user, setUser] = useState<UserProfile>(MOCK_USER);
   const [activeNode, setActiveNode] = useState<WorkoutNode | null>(null);
+  const [guilds, setGuilds] = useState<Guild[]>(MOCK_GUILDS);
   
   // Confetti/Level up state (simplified for demo)
   const [notification, setNotification] = useState<string | null>(null);
@@ -54,6 +56,70 @@ const App: React.FC = () => {
   const handleExitWorkout = () => {
     setView('map');
     setActiveNode(null);
+  };
+
+  const handleJoinGuild = (guildId: string) => {
+    const targetGuild = guilds.find(g => g.id === guildId);
+    
+    // Safety check for capacity
+    if (targetGuild && targetGuild.members >= targetGuild.maxMembers) {
+      setNotification("Guild is full!");
+      setTimeout(() => setNotification(null), 2000);
+      return;
+    }
+
+    // 1. Update User
+    setUser(prev => ({ ...prev, guildId }));
+
+    // 2. Update Guild Member Count
+    setGuilds(prev => prev.map(g => {
+      if (g.id === guildId) {
+        return { ...g, members: g.members + 1 };
+      }
+      return g;
+    }));
+
+    setNotification("Joined Guild Successfully!");
+    setTimeout(() => setNotification(null), 2000);
+  };
+
+  const handleLeaveGuild = () => {
+    if (!user.guildId) return;
+
+    // 1. Update Guild Member Count
+    setGuilds(prev => prev.map(g => {
+      if (g.id === user.guildId) {
+        return { ...g, members: Math.max(0, g.members - 1) };
+      }
+      return g;
+    }));
+
+    // 2. Update User
+    setUser(prev => ({ ...prev, guildId: null }));
+    
+    setNotification("Left Guild.");
+    setTimeout(() => setNotification(null), 2000);
+  };
+
+  const handleCreateGuild = (data: { name: string; description: string; icon: Guild['icon'] }) => {
+    const newGuildId = `g-${Date.now()}`;
+    
+    const newGuild: Guild = {
+      id: newGuildId,
+      name: data.name,
+      description: data.description,
+      icon: data.icon,
+      members: 1, // Start with the creator
+      maxMembers: 30, // Default limit
+      totalXp: 0,
+      rank: guilds.length + 1, // Put at bottom initially
+    };
+
+    setGuilds(prev => [...prev, newGuild]);
+    setUser(prev => ({ ...prev, guildId: newGuildId }));
+    
+    setNotification(`Guild "${data.name}" Created!`);
+    setTimeout(() => setNotification(null), 2000);
   };
 
   return (
@@ -117,19 +183,19 @@ const App: React.FC = () => {
               )}
               
               {view === 'guild' && (
-                 <div className="p-4 flex flex-col items-center justify-center h-64 text-slate-500 text-center">
-                    <Users className="w-16 h-16 mb-4 opacity-50" />
-                    <h2 className="text-xl font-bold mb-2">Guild Hall</h2>
-                    <p className="text-sm">Join a guild to compete on leaderboards and defeat raid bosses together.</p>
-                    <button className="mt-4 px-6 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300">
-                       Coming Soon
-                    </button>
-                 </div>
+                 <GuildsView 
+                    guilds={guilds}
+                    userGuildId={user.guildId}
+                    username={user.username}
+                    onJoinGuild={handleJoinGuild}
+                    onLeaveGuild={handleLeaveGuild}
+                    onCreateGuild={handleCreateGuild}
+                 />
               )}
             </div>
 
             {/* Bottom Navigation */}
-            <div className="fixed bottom-0 w-full max-w-md bg-slate-900 border-t border-slate-800 p-2 pb-4 flex justify-around items-center z-40">
+            <div className="fixed bottom-0 w-full max-w-md bg-slate-900 border-t border-slate-800 p-2 pb-4 flex justify-between px-6 items-center z-40">
               <button 
                 onClick={() => setView('map')}
                 className={`flex flex-col items-center gap-1 p-2 rounded-lg w-16 transition-colors ${view === 'map' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
@@ -138,6 +204,14 @@ const App: React.FC = () => {
                 <span className="text-[10px] uppercase font-bold">Map</span>
               </button>
               
+              <button 
+                onClick={() => setView('guild')}
+                className={`flex flex-col items-center gap-1 p-2 rounded-lg w-16 transition-colors ${view === 'guild' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <Users className="w-6 h-6" />
+                <span className="text-[10px] uppercase font-bold">Guilds</span>
+              </button>
+
               <button 
                 onClick={() => setView('workout')} // Just opens map context mostly, but could be quick start
                 className="flex flex-col items-center gap-1 p-2 -mt-8"
