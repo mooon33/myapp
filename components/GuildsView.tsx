@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Shield, Zap, Sword, Crown, Plus, Search, LogOut, LogIn, X, Send, MessageSquare, AlertCircle, UserPlus, Circle } from 'lucide-react';
-import { Guild, ChatMessage } from '../types';
-import { MOCK_CHAT_MESSAGES, MOCK_FRIENDS } from '../constants';
+import { Users, Shield, Zap, Sword, Crown, Plus, Search, LogOut, LogIn, X, Send, MessageSquare, AlertCircle, UserPlus, Circle, Swords, Trophy, Activity, Dumbbell } from 'lucide-react';
+import { Guild, ChatMessage, Friend, ClassType } from '../types';
+import { MOCK_CHAT_MESSAGES, MOCK_FRIENDS, TRANSLATIONS } from '../constants';
 
 interface Props {
   guilds: Guild[];
   userGuildId: string | null;
   username: string;
+  lang: 'en' | 'ru';
   onJoinGuild: (guildId: string) => void;
   onLeaveGuild: () => void;
   onCreateGuild: (data: { name: string; description: string; icon: Guild['icon'] }) => void;
+  onStartSharedWorkout: (friendName: string) => void;
 }
 
 interface ConfirmationState {
@@ -17,14 +19,19 @@ interface ConfirmationState {
   guild?: Guild;
 }
 
-const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuild, onLeaveGuild, onCreateGuild }) => {
+const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, lang, onJoinGuild, onLeaveGuild, onCreateGuild, onStartSharedWorkout }) => {
   const [activeTab, setActiveTab] = useState<'find' | 'rankings' | 'chat' | 'friends'>('find');
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
   const [selectedGuild, setSelectedGuild] = useState<Guild | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   
   // Friends State (Mocked local state)
-  const [friends, setFriends] = useState(MOCK_FRIENDS);
+  const [friends, setFriends] = useState<Friend[]>(MOCK_FRIENDS);
+  const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
+  const [friendSearchTerm, setFriendSearchTerm] = useState('');
+  const [isFriendSearchLoading, setIsFriendSearchLoading] = useState(false);
+  const [friendSearchResult, setFriendSearchResult] = useState<string | null>(null);
   
   // Create Guild State
   const [isCreating, setIsCreating] = useState(false);
@@ -39,6 +46,8 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
   const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT_MESSAGES);
   const [newMessage, setNewMessage] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const t = TRANSLATIONS[lang];
 
   // Automatically switch tabs if guild status changes
   useEffect(() => {
@@ -124,9 +133,43 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
      setSelectedGuild(guild);
   };
 
-  const handleAddFriend = () => {
-     // Mock functionality
-     alert("Add Friend feature coming soon! (Mock)");
+  const handleSearchFriend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!friendSearchTerm.trim()) return;
+
+    setIsFriendSearchLoading(true);
+    setFriendSearchResult(null);
+
+    // Mock search simulation
+    setTimeout(() => {
+        setIsFriendSearchLoading(false);
+        if (friendSearchTerm.toLowerCase() === 'error') {
+            setFriendSearchResult('error');
+        } else {
+            setFriendSearchResult('success');
+        }
+    }, 1000);
+  };
+
+  const confirmAddFriend = () => {
+      // Mock adding friend
+      const newFriend: Friend = {
+          id: `f-${Date.now()}`,
+          username: friendSearchTerm,
+          level: 1,
+          class: ClassType.WARRIOR,
+          status: 'offline',
+          lastSeen: 'Just now'
+      };
+      setFriends(prev => [...prev, newFriend]);
+      setIsAddFriendOpen(false);
+      setFriendSearchTerm('');
+      setFriendSearchResult(null);
+  };
+
+  const handleChallengeFriend = (friend: Friend) => {
+      onStartSharedWorkout(friend.username);
+      setSelectedFriend(null);
   };
 
   return (
@@ -135,22 +178,22 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
       <div className="p-4 bg-slate-900 border-b border-slate-800">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-amber-500" /> Social Hub
+            <Users className="w-6 h-6 text-amber-500" /> {t.socialHub}
           </h2>
           {!userGuildId && !isCreating && activeTab !== 'friends' && (
              <button 
                onClick={() => setIsCreating(true)}
                className="bg-amber-600 hover:bg-amber-500 text-slate-950 p-2 rounded-lg font-bold text-xs flex items-center gap-1"
              >
-              <Plus className="w-4 h-4" /> Guild
+              <Plus className="w-4 h-4" /> {t.guild}
             </button>
           )}
           {activeTab === 'friends' && (
              <button 
-               onClick={handleAddFriend}
+               onClick={() => setIsAddFriendOpen(true)}
                className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-lg font-bold text-xs flex items-center gap-1"
              >
-              <UserPlus className="w-4 h-4" /> Add Friend
+              <UserPlus className="w-4 h-4" /> {t.addFriend}
             </button>
           )}
         </div>
@@ -167,7 +210,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <MessageSquare className="w-4 h-4" /> Chat
+                <MessageSquare className="w-4 h-4" /> {t.chat}
               </button>
             )}
             <button
@@ -178,7 +221,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Friends
+              {t.friends}
             </button>
             <button
               onClick={() => setActiveTab('find')}
@@ -188,7 +231,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Guilds
+              {t.guilds}
             </button>
             <button
               onClick={() => setActiveTab('rankings')}
@@ -198,7 +241,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Rankings
+              {t.rankings}
             </button>
           </div>
         )}
@@ -210,7 +253,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
         {isCreating ? (
           <div className="p-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-white">Establish a Guild</h3>
+              <h3 className="text-lg font-bold text-white">{t.createGuild}</h3>
               <button onClick={() => setIsCreating(false)} className="text-slate-400 hover:text-white">
                 <X className="w-6 h-6" />
               </button>
@@ -240,7 +283,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
 
               {/* Name Input */}
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Guild Name <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.guildName} <span className="text-red-500">*</span></label>
                 <input 
                   type="text"
                   required
@@ -258,7 +301,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
 
               {/* Description Input */}
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Manifesto (Description) <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.manifesto} <span className="text-red-500">*</span></label>
                 <textarea 
                   required
                   value={createForm.description}
@@ -280,13 +323,13 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                   onClick={() => setIsCreating(false)}
                   className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold"
                 >
-                  Cancel
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-slate-950 rounded-xl font-bold shadow-[0_0_15px_rgba(245,158,11,0.4)]"
                 >
-                  Create Guild
+                  {t.createGuild}
                 </button>
               </div>
             </form>
@@ -301,14 +344,18 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                      </div>
                   ) : (
                      friends.map(friend => (
-                        <div key={friend.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
+                        <div 
+                            key={friend.id} 
+                            onClick={() => setSelectedFriend(friend)}
+                            className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between cursor-pointer hover:bg-slate-800 transition-colors"
+                        >
                            <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 overflow-hidden">
                                  <img src={`https://picsum.photos/seed/${friend.username}/100/100`} alt="Friend" />
                               </div>
                               <div>
                                  <h4 className="font-bold text-slate-200 text-sm">{friend.username}</h4>
-                                 <div className="text-[10px] text-slate-500">Lvl {friend.level} {friend.class}</div>
+                                 <div className="text-[10px] text-slate-500">{t.lvl} {friend.level} {friend.class}</div>
                               </div>
                            </div>
                            <div className="flex items-center gap-1.5">
@@ -363,7 +410,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                       type="text" 
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder="Message guild..."
+                      placeholder={t.messagePlaceholder}
                       className="flex-1 bg-slate-950 border border-slate-700 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
                    />
                    <button 
@@ -384,7 +431,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input 
                     type="text" 
-                    placeholder="Search guilds..." 
+                    placeholder="Search..." 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 pl-9 pr-4 text-slate-200 focus:outline-none focus:border-amber-500 text-sm"
@@ -408,7 +455,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                         }}
                         className="px-3 py-1.5 border border-red-900 bg-red-900/20 text-red-400 rounded-lg text-xs font-bold hover:bg-red-900/40 transition-colors flex items-center gap-1 shrink-0"
                       >
-                        <LogOut className="w-3 h-3" /> Leave
+                        <LogOut className="w-3 h-3" /> {t.leave}
                       </button>
                     );
                   } else if (!userGuildId && !isFull) {
@@ -420,20 +467,20 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                         }}
                         className="px-3 py-1.5 border border-amber-600 text-amber-500 rounded-lg text-xs font-bold hover:bg-amber-600/10 transition-colors flex items-center gap-1 shrink-0"
                       >
-                         <LogIn className="w-3 h-3" /> Join
+                         <LogIn className="w-3 h-3" /> {t.join}
                       </button>
                     );
                   } else if (isFull) {
                     button = (
                       <span className="px-3 py-1.5 text-slate-600 text-xs font-bold cursor-not-allowed shrink-0">
-                        Full
+                        {t.full}
                       </span>
                     );
                   } else {
                      // User is in another guild
                      button = (
                       <span className="px-3 py-1.5 text-slate-600 text-xs font-bold cursor-not-allowed shrink-0">
-                        Join
+                        {t.join}
                       </span>
                      );
                   }
@@ -452,15 +499,15 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className={`font-bold truncate ${isMyGuild ? 'text-amber-400' : 'text-white'}`}>
-                          {guild.name} {isMyGuild && <span className="text-[10px] ml-1 text-slate-400 font-normal">(My Guild)</span>}
+                          {guild.name} {isMyGuild && <span className="text-[10px] ml-1 text-slate-400 font-normal">({t.myGuild})</span>}
                         </h3>
                         <p className="text-slate-400 text-xs truncate">{guild.description}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">
-                            Lvl {Math.floor(guild.totalXp / 10000)}
+                            {t.lvl} {Math.floor(guild.totalXp / 10000)}
                           </span>
                           <span className="text-[10px] text-slate-500">
-                            {guild.members}/{guild.maxMembers} Members
+                            {guild.members}/{guild.maxMembers} {t.members}
                           </span>
                         </div>
                       </div>
@@ -475,7 +522,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
               <div className="space-y-2 p-4">
                 <div className="flex justify-between text-xs text-slate-500 px-2 font-mono uppercase">
                    <span>Rank</span>
-                   <span>Guild</span>
+                   <span>{t.guild}</span>
                    <span>Total XP</span>
                 </div>
                 {sortedByRank.map((guild, index) => {
@@ -499,7 +546,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                         </div>
                         <div>
                           <h4 className="text-slate-200 font-bold text-sm">{guild.name}</h4>
-                          <div className="text-[10px] text-slate-500">{guild.members} members</div>
+                          <div className="text-[10px] text-slate-500">{guild.members} {t.members}</div>
                         </div>
                       </div>
                       <div className="text-amber-500 font-mono font-bold text-sm">
@@ -520,7 +567,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
           <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-sm shadow-2xl transform transition-all">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-lg font-bold text-white">
-                {confirmation.type === 'join' ? 'Join Guild?' : 'Leave Guild?'}
+                {confirmation.type === 'join' ? t.confirmJoin : t.confirmLeave}
               </h3>
               <button onClick={() => setConfirmation(null)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
@@ -529,8 +576,8 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
             
             <p className="text-slate-300 text-sm mb-6 leading-relaxed">
               {confirmation.type === 'join' 
-                ? `Are you sure you want to join "${confirmation.guild?.name}"? You can only be in one guild at a time.` 
-                : `Are you sure you want to leave "${confirmation.guild?.name}"? You will lose access to guild chat and bonuses.`}
+                ? `${t.joinText} "${confirmation.guild?.name}"?` 
+                : `${t.leaveText} "${confirmation.guild?.name}"?`}
             </p>
 
             <div className="flex gap-3">
@@ -538,7 +585,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                 onClick={() => setConfirmation(null)}
                 className="flex-1 py-3 rounded-xl font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
               >
-                Cancel
+                {t.cancel}
               </button>
               <button 
                 onClick={confirmAction}
@@ -548,7 +595,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                     : 'bg-red-500 hover:bg-red-400'
                 }`}
               >
-                {confirmation.type === 'join' ? 'Confirm Join' : 'Confirm Leave'}
+                {t.confirm}
               </button>
             </div>
           </div>
@@ -575,13 +622,13 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
               </div>
 
               <div className="bg-slate-950/50 rounded-lg p-4 mb-6 border border-slate-800">
-                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Manifesto</h4>
+                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t.manifesto}</h4>
                  <p className="text-slate-300 text-sm leading-relaxed italic">"{selectedGuild.description}"</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-6">
                  <div className="bg-slate-800 rounded-lg p-3 text-center">
-                    <div className="text-xs text-slate-400 uppercase">Members</div>
+                    <div className="text-xs text-slate-400 uppercase">{t.members}</div>
                     <div className="font-bold text-xl text-white">{selectedGuild.members} / {selectedGuild.maxMembers}</div>
                  </div>
                  <div className="bg-slate-800 rounded-lg p-3 text-center">
@@ -594,7 +641,129 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                 onClick={() => setSelectedGuild(null)}
                 className="w-full py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-slate-300 transition-colors"
               >
-                Close
+                {t.gotIt}
+              </button>
+            </div>
+         </div>
+      )}
+
+      {/* Add Friend Modal */}
+      {isAddFriendOpen && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+             <div className="bg-slate-900 border border-slate-600 p-6 rounded-2xl w-full max-w-sm shadow-2xl relative">
+                <button 
+                  onClick={() => setIsAddFriendOpen(false)}
+                  className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                >
+                   <X className="w-6 h-6" />
+                </button>
+                <h3 className="text-xl font-bold text-white mb-4">{t.addFriend}</h3>
+                
+                <form onSubmit={handleSearchFriend} className="mb-4">
+                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.searchUser}</label>
+                   <div className="flex gap-2">
+                      <input 
+                         type="text" 
+                         value={friendSearchTerm}
+                         onChange={(e) => setFriendSearchTerm(e.target.value)}
+                         className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                         placeholder="e.g. IronLifter"
+                      />
+                      <button 
+                         type="submit"
+                         disabled={!friendSearchTerm || isFriendSearchLoading}
+                         className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-lg"
+                      >
+                         <Search className="w-5 h-5" />
+                      </button>
+                   </div>
+                </form>
+
+                {isFriendSearchLoading && (
+                    <div className="text-center py-4 text-slate-500">
+                        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                        Searching...
+                    </div>
+                )}
+
+                {!isFriendSearchLoading && friendSearchResult === 'error' && (
+                    <div className="bg-red-900/20 border border-red-500/50 p-3 rounded-lg text-red-200 text-sm text-center">
+                        {t.userNotFound}
+                    </div>
+                )}
+
+                {!isFriendSearchLoading && friendSearchResult === 'success' && (
+                    <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+                        <div className="flex items-center gap-3 mb-4">
+                             <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold text-white">
+                                {friendSearchTerm.charAt(0).toUpperCase()}
+                             </div>
+                             <div>
+                                 <div className="font-bold text-white">{friendSearchTerm}</div>
+                                 <div className="text-xs text-slate-400">Level 1 Warrior</div>
+                             </div>
+                        </div>
+                        <button 
+                            onClick={confirmAddFriend}
+                            className="w-full py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2"
+                        >
+                            <UserPlus className="w-4 h-4" /> {t.sendRequest}
+                        </button>
+                    </div>
+                )}
+             </div>
+          </div>
+      )}
+
+      {/* Friend Profile Modal */}
+      {selectedFriend && (
+         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-600 p-6 rounded-2xl w-full max-w-sm shadow-2xl relative">
+              <button 
+                onClick={() => setSelectedFriend(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <div className="flex flex-col items-center mb-6">
+                 <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-700 flex items-center justify-center mb-3 overflow-hidden">
+                    <img src={`https://picsum.photos/seed/${selectedFriend.username}/200/200`} alt={selectedFriend.username} className="w-full h-full object-cover" />
+                 </div>
+                 <h2 className="text-2xl font-bold text-white text-center flex items-center gap-2">
+                    {selectedFriend.username}
+                    <span className={`w-3 h-3 rounded-full border-2 border-slate-900 ${selectedFriend.status === 'online' ? 'bg-green-500' : 'bg-slate-500'}`}></span>
+                 </h2>
+                 <span className="text-slate-400 text-sm">{selectedFriend.class} • {t.lvl} {selectedFriend.level}</span>
+                 {selectedFriend.guildName && (
+                     <span className="text-amber-500 text-xs font-bold mt-1 flex items-center gap-1">
+                         <Shield className="w-3 h-3" /> {selectedFriend.guildName}
+                     </span>
+                 )}
+              </div>
+
+              {selectedFriend.stats && (
+                  <div className="grid grid-cols-3 gap-2 mb-6">
+                      <div className="bg-slate-800 p-2 rounded text-center">
+                          <div className="text-[10px] text-slate-500 uppercase font-bold">{t.squat}</div>
+                          <div className="text-white font-mono font-bold">{selectedFriend.stats.squat_1rm}</div>
+                      </div>
+                      <div className="bg-slate-800 p-2 rounded text-center">
+                          <div className="text-[10px] text-slate-500 uppercase font-bold">{t.bench}</div>
+                          <div className="text-white font-mono font-bold">{selectedFriend.stats.bench_1rm}</div>
+                      </div>
+                      <div className="bg-slate-800 p-2 rounded text-center">
+                          <div className="text-[10px] text-slate-500 uppercase font-bold">{t.deadlift}</div>
+                          <div className="text-white font-mono font-bold">{selectedFriend.stats.deadlift_1rm}</div>
+                      </div>
+                  </div>
+              )}
+
+              <button 
+                onClick={() => handleChallengeFriend(selectedFriend)}
+                className="w-full py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-white transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.4)]"
+              >
+                <Swords className="w-5 h-5" /> {t.challenge}
               </button>
             </div>
          </div>

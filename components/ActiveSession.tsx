@@ -2,19 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { WorkoutNode, UserProfile } from '../types';
 import { getWorkoutMotivation, getTechniqueTip } from '../services/geminiService';
 import { ArrowLeft, Timer, CheckCircle, Info, Bot } from 'lucide-react';
+import { TRANSLATIONS } from '../constants';
 
 interface Props {
   workout: WorkoutNode;
   user: UserProfile;
+  lang: 'en' | 'ru';
   onComplete: (xp: number, gold: number) => void;
   onExit: () => void;
 }
 
-const ActiveSession: React.FC<Props> = ({ workout, user, onComplete, onExit }) => {
+const ActiveSession: React.FC<Props> = ({ workout, user, lang, onComplete, onExit }) => {
   const [motivation, setMotivation] = useState<string>('');
   const [loadingAI, setLoadingAI] = useState(false);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [activeTip, setActiveTip] = useState<string | null>(null);
+
+  const t = TRANSLATIONS[lang];
 
   useEffect(() => {
     const fetchIntro = async () => {
@@ -24,7 +28,6 @@ const ActiveSession: React.FC<Props> = ({ workout, user, onComplete, onExit }) =
       setLoadingAI(false);
     };
     fetchIntro();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleExercise = (id: string) => {
@@ -51,7 +54,7 @@ const ActiveSession: React.FC<Props> = ({ workout, user, onComplete, onExit }) =
         </button>
         <div>
           <h2 className="text-xl font-bold text-white leading-none">{workout.title}</h2>
-          <span className="text-xs text-amber-500 font-mono">Reward: {workout.xpReward} XP</span>
+          <span className="text-xs text-amber-500 font-mono">{t.reward}: {workout.xpReward} {t.xp}</span>
         </div>
       </div>
 
@@ -62,7 +65,7 @@ const ActiveSession: React.FC<Props> = ({ workout, user, onComplete, onExit }) =
              <Bot className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-violet-300 uppercase mb-1">Oracle Guidance</h4>
+            <h4 className="text-sm font-bold text-violet-300 uppercase mb-1">{t.oracleGuidance}</h4>
             <p className="text-sm text-violet-100 italic">
               {loadingAI ? "Communining with the spirits..." : `"${motivation}"`}
             </p>
@@ -107,10 +110,10 @@ const ActiveSession: React.FC<Props> = ({ workout, user, onComplete, onExit }) =
                    onClick={() => handleGetTip(ex.name)}
                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-slate-800 text-blue-400 hover:bg-slate-700 transition-colors"
                 >
-                  <Info className="w-3 h-3" /> Technique Tip
+                  <Info className="w-3 h-3" /> {t.techniqueTip}
                 </button>
                 <button className="flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700">
-                  <Timer className="w-3 h-3" /> Rest Timer
+                  <Timer className="w-3 h-3" /> {t.restTimer}
                 </button>
               </div>
             </div>
@@ -123,14 +126,14 @@ const ActiveSession: React.FC<Props> = ({ workout, user, onComplete, onExit }) =
          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setActiveTip(null)}>
             <div className="bg-slate-900 border border-slate-600 p-6 rounded-xl max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
                <h3 className="text-lg font-bold text-blue-400 mb-2 flex items-center gap-2">
-                  <Bot className="w-5 h-5" /> Technique Insight
+                  <Bot className="w-5 h-5" /> {t.techniqueTip}
                </h3>
                <p className="text-slate-200 text-sm leading-relaxed">{activeTip}</p>
                <button 
                 onClick={() => setActiveTip(null)}
                 className="mt-4 w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded text-sm font-bold uppercase"
                >
-                Got it
+                {t.gotIt}
                </button>
             </div>
          </div>
@@ -147,7 +150,7 @@ const ActiveSession: React.FC<Props> = ({ workout, user, onComplete, onExit }) =
               : 'bg-slate-800 text-slate-500 cursor-not-allowed'
           }`}
         >
-          {isFinished ? 'Complete Quest' : `${completedExercises.size}/${workout.exercises.length} Completed`}
+          {isFinished ? t.completeQuest : `${completedExercises.size}/${workout.exercises.length} ${t.completed}`}
         </button>
       </div>
     </div>

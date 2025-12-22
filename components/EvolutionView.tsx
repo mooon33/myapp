@@ -1,25 +1,28 @@
 import React from 'react';
 import { UserProfile } from '../types';
-import { SPRITE_EVOLUTION } from '../constants';
+import { SPRITE_EVOLUTION, TRANSLATIONS } from '../constants';
 import { Sparkles, Lock, ArrowDown } from 'lucide-react';
 
 interface Props {
   user: UserProfile;
+  lang: 'en' | 'ru';
 }
 
-const EvolutionView: React.FC<Props> = ({ user }) => {
+const EvolutionView: React.FC<Props> = ({ user, lang }) => {
+  const t = TRANSLATIONS[lang];
+
   return (
     <div className="flex flex-col h-full bg-slate-950">
       {/* Header */}
       <div className="p-4 bg-slate-900 border-b border-slate-800">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-purple-500" /> Evolution Path
+          <Sparkles className="w-6 h-6 text-purple-500" /> {t.evolutionPath}
         </h2>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center">
          <p className="text-center text-slate-400 text-sm mb-8">
-            Your journey from novice to legend. Train hard to unlock new forms.
+            {t.evolutionDesc}
          </p>
 
          <div className="relative border-l-2 border-slate-800 ml-4 space-y-8 pb-10">
@@ -58,15 +61,15 @@ const EvolutionView: React.FC<Props> = ({ user }) => {
                         <div>
                            <div className="text-[10px] font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
                               {isUnlocked ? (
-                                 <span className="text-purple-400">Unlocked</span>
+                                 <span className="text-purple-400">{t.unlocked}</span>
                               ) : (
-                                 <span className="text-slate-500">Requires Lvl {milestone.level}</span>
+                                 <span className="text-slate-500">{t.requiresLvl} {milestone.level}</span>
                               )}
                            </div>
                            <h3 className={`font-bold text-lg ${isUnlocked ? 'text-white' : 'text-slate-400'}`}>{milestone.title}</h3>
                            {isNext && (
                               <div className="text-[10px] text-amber-500 mt-1 font-mono">
-                                 Next Milestone
+                                 {t.nextMilestone}
                               </div>
                            )}
                         </div>
@@ -79,7 +82,7 @@ const EvolutionView: React.FC<Props> = ({ user }) => {
          {/* Arrow indicating more to come */}
          <div className="flex flex-col items-center text-slate-600 mt-4">
             <ArrowDown className="w-5 h-5 animate-bounce" />
-            <span className="text-xs uppercase font-bold tracking-widest mt-2">More coming soon</span>
+            <span className="text-xs uppercase font-bold tracking-widest mt-2">{t.moreComing}</span>
          </div>
       </div>
     </div>

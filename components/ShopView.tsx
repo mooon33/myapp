@@ -1,24 +1,26 @@
 import React from 'react';
 import { ShopItem } from '../types';
 import { ShoppingBag, Shield, Zap, Sword, Crown, Coins, Lock } from 'lucide-react';
+import { TRANSLATIONS } from '../constants';
 
 interface Props {
   items: ShopItem[];
   userGold: number;
-  userLevel: number; // Added to check tiers
+  userLevel: number;
+  lang: 'en' | 'ru';
   onBuy: (item: ShopItem) => void;
 }
 
-const ShopView: React.FC<Props> = ({ items, userGold, userLevel = 1, onBuy }) => {
-  // Group by Tiers (Min Levels)
+const ShopView: React.FC<Props> = ({ items, userGold, userLevel = 1, lang, onBuy }) => {
   const tiers = (Array.from(new Set(items.map(i => i.minLevel))) as number[]).sort((a, b) => a - b);
+  const t = TRANSLATIONS[lang];
 
   return (
     <div className="flex flex-col h-full bg-slate-950">
       {/* Header */}
       <div className="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <ShoppingBag className="w-6 h-6 text-emerald-500" /> Merchant
+          <ShoppingBag className="w-6 h-6 text-emerald-500" /> {t.merchant}
         </h2>
         <div className="bg-slate-950 border border-amber-500/50 rounded-full px-4 py-1 flex items-center gap-2">
            <Coins className="w-4 h-4 text-amber-500" />
@@ -36,7 +38,7 @@ const ShopView: React.FC<Props> = ({ items, userGold, userLevel = 1, onBuy }) =>
             return (
               <div key={tierLevel}>
                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                    {tierLevel === 1 ? 'Novice Gear' : `Tier ${Math.ceil(tierLevel/5)} (Lvl ${tierLevel}+)`}
+                    {tierLevel === 1 ? t.noviceGear : `${t.tier} ${Math.ceil(tierLevel/5)} (${t.lvl} ${tierLevel}+)`}
                     {isTierLocked && <Lock className="w-3 h-3 text-red-500" />}
                  </h3>
                  <div className="grid grid-cols-1 gap-4">
@@ -57,7 +59,7 @@ const ShopView: React.FC<Props> = ({ items, userGold, userLevel = 1, onBuy }) =>
                              {isTierLocked && (
                                 <div className="absolute inset-0 z-10 bg-slate-950/60 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
                                    <div className="bg-red-900/80 text-red-200 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border border-red-500/30">
-                                      <Lock className="w-3 h-3" /> Requires Level {tierLevel}
+                                      <Lock className="w-3 h-3" /> {t.requiresLvl} {tierLevel}
                                    </div>
                                 </div>
                              )}
@@ -104,7 +106,7 @@ const ShopView: React.FC<Props> = ({ items, userGold, userLevel = 1, onBuy }) =>
                                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                                       }`}
                                    >
-                                      {isTierLocked ? 'Locked' : canAfford ? 'Buy' : 'Too Expensive'}
+                                      {isTierLocked ? t.locked : canAfford ? t.buy : t.tooExpensive}
                                       <span className="flex items-center gap-0.5 ml-1">
                                          {item.price} <Coins className="w-3 h-3" />
                                       </span>

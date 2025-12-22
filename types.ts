@@ -1,3 +1,4 @@
+
 export enum ClassType {
   WARRIOR = 'Warrior',
   SCOUT = 'Scout',
@@ -43,6 +44,9 @@ export interface UserProfile {
   stats: Stats;
   streak: number;
   guildId: string | null; // Track current guild
+  gender?: 'male' | 'female' | 'other';
+  height?: number; // cm
+  weight?: number; // kg
 }
 
 export interface InventoryItem extends Item {
@@ -96,6 +100,9 @@ export interface Friend {
   class: ClassType;
   status: 'online' | 'offline';
   lastSeen?: string;
+  // Extended for profile view
+  guildName?: string;
+  stats?: Stats;
 }
 
 export interface ChatMessage {
@@ -109,8 +116,8 @@ export interface ChatMessage {
 export interface AppSettings {
   soundEnabled: boolean;
   notificationsEnabled: boolean;
-  language: 'en' | 'ru' | 'es';
-  theme: 'dark' | 'light';
+  language: 'en' | 'ru';
+  // Theme removed
 }
 
 export interface SpriteMilestone {

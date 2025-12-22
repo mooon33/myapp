@@ -1,4 +1,296 @@
+
 import { UserProfile, ClassType, WorkoutNode, InventoryItem, Guild, ChatMessage, ShopItem, Friend, SpriteMilestone } from './types';
+
+export const TRANSLATIONS = {
+  en: {
+    // Navigation
+    map: 'Map',
+    social: 'Social',
+    evolve: 'Evolve',
+    shop: 'Shop',
+    hero: 'Hero',
+    
+    // Auth
+    checkScrolls: 'Check your Scrolls',
+    verificationSent: 'We have sent a verification rune to',
+    confirmEmail: 'Please confirm your email to begin your journey.',
+    returnLogin: 'Return to Login',
+    heroName: 'Hero Name',
+    emailScroll: 'Email Scroll',
+    secretRune: 'Secret Rune',
+    beginJourney: 'Begin Journey',
+    enterRealm: 'Enter Realm',
+    alreadyHero: 'Already have a hero? Sign In',
+    newHero: 'New to the realm? Create Account',
+    usernameError: 'Username must be at least 3 characters long.',
+    usernameTaken: 'This Hero Name is already taken.',
+    authError: 'An error occurred during authentication.',
+    
+    // Onboarding
+    charCreation: 'Character Creation',
+    step1: 'Physical Stats',
+    step2: 'Choose your Path',
+    gender: 'Gender',
+    male: 'Male',
+    female: 'Female',
+    other: 'Other',
+    height: 'Height (cm)',
+    weight: 'Weight (kg)',
+    nextStep: 'Next Step',
+    selectClass: 'Select Class',
+    completeSetup: 'Complete Setup',
+    warriorDesc: 'Masters of heavy iron. Focus on Strength and Power.',
+    scoutDesc: 'Agile and enduring. Focus on Stamina and Cardio.',
+    monkDesc: 'Disciplined mind and body. Focus on Bodyweight and Flexibility.',
+
+    // Map & Campaign
+    xp: 'XP',
+    chapter: 'Chapter',
+    campaign: 'Campaign Map',
+    loading: 'Loading Realm...',
+    levelUp: 'LEVEL UP!',
+    questComplete: 'Quest Complete!',
+    
+    // Character Profile
+    lvl: 'Lvl',
+    experience: 'Experience',
+    personalRecords: 'Personal Records',
+    updateRecords: 'Update Records',
+    cancel: 'Cancel',
+    save: 'Save',
+    squat: 'Squat',
+    bench: 'Bench',
+    deadlift: 'Deadlift',
+    attributes: {
+      str: 'Strength (STR)',
+      strDesc: 'Increases physical power, lifting capacity, and heavy weapon effectiveness.',
+      sta: 'Stamina (STA)',
+      staDesc: 'Boosts energy reserves, recovery speed, and cardio performance.',
+      will: 'Willpower (WILL)',
+      willDesc: 'Enhances mental focus, streak protection, and resistance to fatigue.'
+    },
+
+    // Guilds & Friends
+    socialHub: 'Social Hub',
+    guild: 'Guild',
+    addFriend: 'Add Friend',
+    searchUser: 'Search Hero by Name',
+    sendRequest: 'Send Request',
+    requestSent: 'Friend request sent!',
+    userNotFound: 'Hero not found.',
+    chat: 'Chat',
+    friends: 'Friends',
+    guilds: 'Guilds',
+    rankings: 'Rankings',
+    createGuild: 'Establish a Guild',
+    guildName: 'Guild Name',
+    manifesto: 'Manifesto (Description)',
+    members: 'Members',
+    join: 'Join',
+    leave: 'Leave',
+    full: 'Full',
+    confirmJoin: 'Join Guild?',
+    confirmLeave: 'Leave Guild?',
+    joinText: 'Are you sure you want to join',
+    leaveText: 'Are you sure you want to leave',
+    confirm: 'Confirm',
+    myGuild: 'My Guild',
+    messagePlaceholder: 'Message guild...',
+    challenge: 'Train Together',
+    startingWorkout: 'Starting shared workout...',
+    online: 'Online',
+    offline: 'Offline',
+
+    // Shop
+    merchant: 'Merchant',
+    buy: 'Buy',
+    locked: 'Locked',
+    tooExpensive: 'Too Expensive',
+    requiresLvl: 'Requires Level',
+    noviceGear: 'Novice Gear',
+    tier: 'Tier',
+    purchased: 'Purchased',
+    notEnoughGold: 'Not enough gold!',
+
+    // Active Session
+    reward: 'Reward',
+    oracleGuidance: 'Oracle Guidance',
+    techniqueTip: 'Technique Tip',
+    restTimer: 'Rest Timer',
+    gotIt: 'Got it',
+    completeQuest: 'Complete Quest',
+    completed: 'Completed',
+    
+    // Evolution
+    evolutionPath: 'Evolution Path',
+    evolutionDesc: 'Your journey from novice to legend. Train hard to unlock new forms.',
+    unlocked: 'Unlocked',
+    nextMilestone: 'Next Milestone',
+    moreComing: 'More coming soon',
+
+    // Inventory
+    equipment: 'Equipment',
+    equip: 'Equip',
+    unequip: 'Unequip',
+
+    // Settings
+    settings: 'Settings',
+    general: 'General',
+    sound: 'Sound Effects',
+    notifications: 'Notifications',
+    language: 'Language',
+    account: 'Account',
+    privacy: 'Privacy Policy',
+    logout: 'Log Out',
+    selectLanguage: 'Select Language',
+    english: 'English',
+    russian: 'Russian'
+  },
+  ru: {
+    // Navigation
+    map: 'Карта',
+    social: 'Союз',
+    evolve: 'Развитие',
+    shop: 'Магазин',
+    hero: 'Герой',
+
+    // Auth
+    checkScrolls: 'Проверьте Свитки',
+    verificationSent: 'Мы отправили руну подтверждения на',
+    confirmEmail: 'Пожалуйста, подтвердите email, чтобы начать путь.',
+    returnLogin: 'Вернуться ко входу',
+    heroName: 'Имя Героя',
+    emailScroll: 'Email Свиток',
+    secretRune: 'Тайная Руна (Пароль)',
+    beginJourney: 'Начать Путь',
+    enterRealm: 'Войти в Мир',
+    alreadyHero: 'Уже есть герой? Войти',
+    newHero: 'Новый герой? Создать аккаунт',
+    usernameError: 'Имя должно быть не короче 3 символов.',
+    usernameTaken: 'Это имя героя уже занято.',
+    authError: 'Ошибка при авторизации.',
+
+    // Onboarding
+    charCreation: 'Создание Персонажа',
+    step1: 'Физические Данные',
+    step2: 'Выберите Путь',
+    gender: 'Пол',
+    male: 'Мужской',
+    female: 'Женский',
+    other: 'Другой',
+    height: 'Рост (см)',
+    weight: 'Вес (кг)',
+    nextStep: 'Далее',
+    selectClass: 'Выберите Класс',
+    completeSetup: 'Завершить',
+    warriorDesc: 'Мастера тяжелого железа. Упор на Силу и Мощь.',
+    scoutDesc: 'Ловкие и выносливые. Упор на Выносливость и Кардио.',
+    monkDesc: 'Дисциплина ума и тела. Упор на Собственный вес и Гибкость.',
+
+    // Map & Campaign
+    xp: 'Опыт',
+    chapter: 'Глава',
+    campaign: 'Карта Кампании',
+    loading: 'Загрузка мира...',
+    levelUp: 'НОВЫЙ УРОВЕНЬ!',
+    questComplete: 'Квест Завершен!',
+
+    // Character Profile
+    lvl: 'Ур',
+    experience: 'Опыт',
+    personalRecords: 'Личные Рекорды',
+    updateRecords: 'Обновить Рекорды',
+    cancel: 'Отмена',
+    save: 'Сохранить',
+    squat: 'Присед',
+    bench: 'Жим',
+    deadlift: 'Тяга',
+    attributes: {
+      str: 'Сила (STR)',
+      strDesc: 'Увеличивает физическую мощь, грузоподъемность и эффективность тяжелого оружия.',
+      sta: 'Выносливость (STA)',
+      staDesc: 'Повышает запасы энергии, скорость восстановления и кардио-результаты.',
+      will: 'Воля (WILL)',
+      willDesc: 'Улучшает ментальный фокус, защиту серии тренировок и сопротивление усталости.'
+    },
+
+    // Guilds & Friends
+    socialHub: 'Центр Сообщества',
+    guild: 'Гильдия',
+    addFriend: 'Добавить друга',
+    searchUser: 'Поиск героя по имени',
+    sendRequest: 'Отправить запрос',
+    requestSent: 'Запрос дружбы отправлен!',
+    userNotFound: 'Герой не найден.',
+    chat: 'Чат',
+    friends: 'Друзья',
+    guilds: 'Гильдии',
+    rankings: 'Рейтинг',
+    createGuild: 'Основать Гильдию',
+    guildName: 'Название Гильдии',
+    manifesto: 'Манифест (Описание)',
+    members: 'Участники',
+    join: 'Вступить',
+    leave: 'Покинуть',
+    full: 'Полная',
+    confirmJoin: 'Вступить в гильдию?',
+    confirmLeave: 'Покинуть гильдию?',
+    joinText: 'Вы уверены, что хотите вступить в',
+    leaveText: 'Вы уверены, что хотите покинуть',
+    confirm: 'Подтвердить',
+    myGuild: 'Моя Гильдия',
+    messagePlaceholder: 'Сообщение гильдии...',
+    challenge: 'Совместная тренировка',
+    startingWorkout: 'Запуск совместной тренировки...',
+    online: 'В сети',
+    offline: 'Не в сети',
+
+    // Shop
+    merchant: 'Торговец',
+    buy: 'Купить',
+    locked: 'Закрыто',
+    tooExpensive: 'Дорого',
+    requiresLvl: 'Нужен уровень',
+    noviceGear: 'Снаряжение Новичка',
+    tier: 'Тир',
+    purchased: 'Куплено',
+    notEnoughGold: 'Недостаточно золота!',
+
+    // Active Session
+    reward: 'Награда',
+    oracleGuidance: 'Совет Оракула',
+    techniqueTip: 'Совет по Технике',
+    restTimer: 'Таймер Отдыха',
+    gotIt: 'Понятно',
+    completeQuest: 'Завершить Квест',
+    completed: 'Выполнено',
+
+    // Evolution
+    evolutionPath: 'Путь Эволюции',
+    evolutionDesc: 'Твой путь от новичка до легенды. Тренируйся, чтобы открыть новые формы.',
+    unlocked: 'Открыто',
+    nextMilestone: 'Следующая цель',
+    moreComing: 'Скоро будет больше',
+
+    // Inventory
+    equipment: 'Снаряжение',
+    equip: 'Надеть',
+    unequip: 'Снять',
+
+    // Settings
+    settings: 'Настройки',
+    general: 'Общие',
+    sound: 'Звуки',
+    notifications: 'Уведомления',
+    language: 'Язык',
+    account: 'Аккаунт',
+    privacy: 'Конфиденциальность',
+    logout: 'Выйти',
+    selectLanguage: 'Выберите Язык',
+    english: 'Английский',
+    russian: 'Русский'
+  }
+};
 
 export const MOCK_USER: UserProfile = {
   id: 'u-123',
@@ -257,9 +549,34 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = [
 ];
 
 export const MOCK_FRIENDS: Friend[] = [
-  { id: 'f-1', username: 'SarahSquats', level: 12, class: ClassType.WARRIOR, status: 'online' },
-  { id: 'f-2', username: 'MikeMarathon', level: 8, class: ClassType.SCOUT, status: 'offline', lastSeen: '2h ago' },
-  { id: 'f-3', username: 'ZenMaster', level: 15, class: ClassType.MONK, status: 'online' },
+  { 
+    id: 'f-1', 
+    username: 'SarahSquats', 
+    level: 12, 
+    class: ClassType.WARRIOR, 
+    status: 'online',
+    guildName: 'Iron Legion',
+    stats: { squat_1rm: 120, bench_1rm: 65, deadlift_1rm: 140 }
+  },
+  { 
+    id: 'f-2', 
+    username: 'MikeMarathon', 
+    level: 8, 
+    class: ClassType.SCOUT, 
+    status: 'offline', 
+    lastSeen: '2h ago',
+    guildName: 'Cardio Kings',
+    stats: { squat_1rm: 80, bench_1rm: 60, deadlift_1rm: 100 }
+  },
+  { 
+    id: 'f-3', 
+    username: 'ZenMaster', 
+    level: 15, 
+    class: ClassType.MONK, 
+    status: 'online',
+    guildName: 'Morning Crew',
+    stats: { squat_1rm: 100, bench_1rm: 80, deadlift_1rm: 130 }
+  },
 ];
 
 export const SPRITE_EVOLUTION: SpriteMilestone[] = [

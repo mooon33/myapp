@@ -1,32 +1,36 @@
 import React, { useState } from 'react';
 import { UserProfile, ClassType, Stats } from '../types';
 import { Shield, Zap, Brain, Trophy, ChevronRight, X, Swords, Activity, Target, Pencil, Save } from 'lucide-react';
+import { TRANSLATIONS } from '../constants';
 
 interface Props {
   user: UserProfile;
+  lang: 'en' | 'ru';
   onUpdateClass?: (newClass: ClassType) => void;
   onUpdateStats?: (newStats: Stats) => void;
 }
 
-const CLASS_DESCRIPTIONS = {
-  [ClassType.WARRIOR]: { desc: "Masters of heavy iron. High strength potential.", bonus: "+Bonus STR gain" },
-  [ClassType.SCOUT]: { desc: "Agile and enduring. Built for stamina.", bonus: "+Bonus STA gain" },
-  [ClassType.MONK]: { desc: "Disciplined mind and body. Unshakable focus.", bonus: "+Bonus WILL gain" },
-};
-
-const ATTRIBUTE_INFO = {
-  str: { name: "Strength (STR)", desc: "Increases physical power, lifting capacity, and heavy weapon effectiveness." },
-  sta: { name: "Stamina (STA)", desc: "Boosts energy reserves, recovery speed, and cardio performance." },
-  will: { name: "Willpower (WILL)", desc: "Enhances mental focus, streak protection, and resistance to fatigue." }
-};
-
-const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats }) => {
+const CharacterDisplay: React.FC<Props> = ({ user, lang, onUpdateClass, onUpdateStats }) => {
   const [showClassSelector, setShowClassSelector] = useState(false);
-  const [activeAttribute, setActiveAttribute] = useState<keyof typeof ATTRIBUTE_INFO | null>(null);
+  const [activeAttribute, setActiveAttribute] = useState<'str' | 'sta' | 'will' | null>(null);
   
   // Stats Editing State
   const [isEditingStats, setIsEditingStats] = useState(false);
   const [tempStats, setTempStats] = useState<Stats>(user.stats);
+  
+  const t = TRANSLATIONS[lang];
+  
+  const CLASS_DESCRIPTIONS = {
+      [ClassType.WARRIOR]: { desc: t.warriorDesc, bonus: "+Bonus STR" },
+      [ClassType.SCOUT]: { desc: t.scoutDesc, bonus: "+Bonus STA" },
+      [ClassType.MONK]: { desc: t.monkDesc, bonus: "+Bonus WILL" },
+  };
+
+  const ATTRIBUTE_INFO = {
+    str: { name: t.attributes.str, desc: t.attributes.strDesc },
+    sta: { name: t.attributes.sta, desc: t.attributes.staDesc },
+    will: { name: t.attributes.will, desc: t.attributes.willDesc }
+  };
 
   const xpPercentage = (user.current_xp / user.max_xp) * 100;
 
@@ -62,7 +66,7 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats 
             <h2 className="text-2xl font-bold text-white tracking-wide flex items-center gap-2">
               {user.username}
               <span className="text-xs px-2 py-1 bg-amber-600 rounded text-slate-950 font-extrabold uppercase">
-                Lvl {user.level}
+                {t.lvl} {user.level}
               </span>
             </h2>
             
@@ -85,8 +89,8 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats 
         {/* XP Bar */}
         <div className="mb-6">
           <div className="flex justify-between text-xs text-slate-400 mb-1 font-mono uppercase">
-            <span>Experience</span>
-            <span>{user.current_xp} / {user.max_xp} XP</span>
+            <span>{t.experience}</span>
+            <span>{user.current_xp} / {user.max_xp} {t.xp}</span>
           </div>
           <div className="w-full bg-slate-800 rounded-full h-3 border border-slate-700">
             <div 
@@ -131,7 +135,7 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats 
           <div className="flex justify-between items-center mb-3">
              <div className="flex items-center gap-2 text-slate-300">
                 <Trophy className="w-4 h-4 text-amber-500" />
-                <span className="text-sm font-semibold uppercase">Personal Records</span>
+                <span className="text-sm font-semibold uppercase">{t.personalRecords}</span>
              </div>
              <button 
                 onClick={() => {
@@ -146,15 +150,15 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats 
           
           <div className="grid grid-cols-3 gap-2 text-center text-sm">
              <div className="bg-slate-950/50 p-2 rounded border border-slate-800">
-                <div className="text-slate-500 text-[10px] uppercase font-bold mb-1">Squat</div>
+                <div className="text-slate-500 text-[10px] uppercase font-bold mb-1">{t.squat}</div>
                 <div className="font-mono text-slate-200 font-bold">{user.stats.squat_1rm} <span className="text-[10px] text-slate-500">kg</span></div>
              </div>
              <div className="bg-slate-950/50 p-2 rounded border border-slate-800">
-                <div className="text-slate-500 text-[10px] uppercase font-bold mb-1">Bench</div>
+                <div className="text-slate-500 text-[10px] uppercase font-bold mb-1">{t.bench}</div>
                 <div className="font-mono text-slate-200 font-bold">{user.stats.bench_1rm} <span className="text-[10px] text-slate-500">kg</span></div>
              </div>
              <div className="bg-slate-950/50 p-2 rounded border border-slate-800">
-                <div className="text-slate-500 text-[10px] uppercase font-bold mb-1">Deadlift</div>
+                <div className="text-slate-500 text-[10px] uppercase font-bold mb-1">{t.deadlift}</div>
                 <div className="font-mono text-slate-200 font-bold">{user.stats.deadlift_1rm} <span className="text-[10px] text-slate-500">kg</span></div>
              </div>
           </div>
@@ -167,11 +171,11 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats 
       {isEditingStats && (
          <div className="absolute inset-0 z-30 bg-slate-950/95 backdrop-blur-sm p-6 flex items-center justify-center animate-in fade-in duration-200">
             <div className="w-full max-w-xs">
-               <h3 className="text-lg font-bold text-white mb-6 text-center">Update Records</h3>
+               <h3 className="text-lg font-bold text-white mb-6 text-center">{t.updateRecords}</h3>
                
                <div className="space-y-4 mb-6">
                   <div>
-                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Squat (kg)</label>
+                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">{t.squat} (kg)</label>
                      <input 
                         type="number" 
                         value={tempStats.squat_1rm}
@@ -180,7 +184,7 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats 
                      />
                   </div>
                   <div>
-                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Bench Press (kg)</label>
+                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">{t.bench} (kg)</label>
                      <input 
                         type="number" 
                         value={tempStats.bench_1rm}
@@ -189,7 +193,7 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats 
                      />
                   </div>
                   <div>
-                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Deadlift (kg)</label>
+                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">{t.deadlift} (kg)</label>
                      <input 
                         type="number" 
                         value={tempStats.deadlift_1rm}
@@ -204,13 +208,13 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats 
                      onClick={() => setIsEditingStats(false)}
                      className="flex-1 py-2 rounded-lg font-bold bg-slate-800 text-slate-400 hover:bg-slate-700"
                   >
-                     Cancel
+                     {t.cancel}
                   </button>
                   <button 
                      onClick={handleSaveStats}
                      className="flex-1 py-2 rounded-lg font-bold bg-amber-600 text-slate-950 hover:bg-amber-500 flex items-center justify-center gap-2"
                   >
-                     <Save className="w-4 h-4" /> Save
+                     <Save className="w-4 h-4" /> {t.save}
                   </button>
                </div>
             </div>
@@ -221,7 +225,7 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats 
       {showClassSelector && (
         <div className="absolute inset-0 z-30 bg-slate-950/95 backdrop-blur-sm p-4 flex flex-col animate-in fade-in duration-200">
            <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-2">
-             <h3 className="text-lg font-bold text-white">Select Class</h3>
+             <h3 className="text-lg font-bold text-white">{t.selectClass}</h3>
              <button onClick={() => setShowClassSelector(false)}><X className="w-6 h-6 text-slate-400 hover:text-white" /></button>
            </div>
            <div className="space-y-3 overflow-y-auto">
@@ -276,7 +280,7 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats 
                 onClick={() => setActiveAttribute(null)}
                 className="w-full py-3 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-bold border border-slate-700 text-slate-200 transition-colors"
               >
-                Close
+                {t.gotIt}
               </button>
            </div>
         </div>
