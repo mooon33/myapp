@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Shield, Zap, Sword, Crown, Plus, Search, LogOut, LogIn, X, Send, MessageSquare, AlertCircle } from 'lucide-react';
+import { Users, Shield, Zap, Sword, Crown, Plus, Search, LogOut, LogIn, X, Send, MessageSquare, AlertCircle, UserPlus, Circle } from 'lucide-react';
 import { Guild, ChatMessage } from '../types';
-import { MOCK_CHAT_MESSAGES } from '../constants';
+import { MOCK_CHAT_MESSAGES, MOCK_FRIENDS } from '../constants';
 
 interface Props {
   guilds: Guild[];
@@ -18,9 +18,13 @@ interface ConfirmationState {
 }
 
 const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuild, onLeaveGuild, onCreateGuild }) => {
-  const [activeTab, setActiveTab] = useState<'find' | 'rankings' | 'chat'>('find');
+  const [activeTab, setActiveTab] = useState<'find' | 'rankings' | 'chat' | 'friends'>('find');
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
+  const [selectedGuild, setSelectedGuild] = useState<Guild | null>(null);
+  
+  // Friends State (Mocked local state)
+  const [friends, setFriends] = useState(MOCK_FRIENDS);
   
   // Create Guild State
   const [isCreating, setIsCreating] = useState(false);
@@ -38,11 +42,12 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
 
   // Automatically switch tabs if guild status changes
   useEffect(() => {
-    if (userGuildId) {
+    if (userGuildId && activeTab === 'find') {
       setActiveTab('chat');
-      setIsCreating(false);
-    } else {
-      setActiveTab('find');
+    }
+    // If we leave a guild, switch to find if we were in chat
+    if (!userGuildId && activeTab === 'chat') {
+       setActiveTab('find');
     }
   }, [userGuildId]);
 
@@ -84,7 +89,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
 
     const msg: ChatMessage = {
       id: `m-${Date.now()}`,
-      senderId: 'current-user', // In real app this comes from auth
+      senderId: 'current-user', 
       senderName: username,
       text: newMessage.trim(),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -115,31 +120,48 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
     }
   };
 
+  const handleGuildClick = (guild: Guild) => {
+     setSelectedGuild(guild);
+  };
+
+  const handleAddFriend = () => {
+     // Mock functionality
+     alert("Add Friend feature coming soon! (Mock)");
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-950 relative">
       {/* Header */}
       <div className="p-4 bg-slate-900 border-b border-slate-800">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-amber-500" /> Guild Hall
+            <Users className="w-6 h-6 text-amber-500" /> Social Hub
           </h2>
-          {!userGuildId && !isCreating && (
+          {!userGuildId && !isCreating && activeTab !== 'friends' && (
              <button 
                onClick={() => setIsCreating(true)}
                className="bg-amber-600 hover:bg-amber-500 text-slate-950 p-2 rounded-lg font-bold text-xs flex items-center gap-1"
              >
-              <Plus className="w-4 h-4" /> Create
+              <Plus className="w-4 h-4" /> Guild
+            </button>
+          )}
+          {activeTab === 'friends' && (
+             <button 
+               onClick={handleAddFriend}
+               className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-lg font-bold text-xs flex items-center gap-1"
+             >
+              <UserPlus className="w-4 h-4" /> Add Friend
             </button>
           )}
         </div>
 
         {/* Tabs */}
         {!isCreating && (
-          <div className="flex p-1 bg-slate-800 rounded-lg">
+          <div className="flex p-1 bg-slate-800 rounded-lg overflow-x-auto no-scrollbar">
              {userGuildId && (
               <button
                 onClick={() => setActiveTab('chat')}
-                className={`flex-1 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${
+                className={`flex-1 py-2 px-3 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 whitespace-nowrap ${
                   activeTab === 'chat' 
                     ? 'bg-slate-700 text-white shadow' 
                     : 'text-slate-400 hover:text-slate-200'
@@ -149,24 +171,34 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
               </button>
             )}
             <button
+              onClick={() => setActiveTab('friends')}
+              className={`flex-1 py-2 px-3 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
+                activeTab === 'friends' 
+                  ? 'bg-slate-700 text-white shadow' 
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Friends
+            </button>
+            <button
               onClick={() => setActiveTab('find')}
-              className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
+              className={`flex-1 py-2 px-3 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
                 activeTab === 'find' 
                   ? 'bg-slate-700 text-white shadow' 
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Find Guild
+              Guilds
             </button>
             <button
               onClick={() => setActiveTab('rankings')}
-              className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
+              className={`flex-1 py-2 px-3 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
                 activeTab === 'rankings' 
                   ? 'bg-slate-700 text-white shadow' 
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Leaderboard
+              Rankings
             </button>
           </div>
         )}
@@ -208,12 +240,13 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
 
               {/* Name Input */}
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Guild Name</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Guild Name <span className="text-red-500">*</span></label>
                 <input 
                   type="text"
+                  required
                   value={createForm.name}
                   onChange={e => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-amber-500 focus:outline-none"
+                  className={`w-full bg-slate-900 border ${formErrors.name ? 'border-red-500' : 'border-slate-700'} rounded-lg p-3 text-white focus:border-amber-500 focus:outline-none`}
                   placeholder="e.g. Iron Titans"
                 />
                 {formErrors.name && (
@@ -225,11 +258,12 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
 
               {/* Description Input */}
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Manifesto (Description)</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Manifesto (Description) <span className="text-red-500">*</span></label>
                 <textarea 
+                  required
                   value={createForm.description}
                   onChange={e => setCreateForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white h-24 focus:border-amber-500 focus:outline-none resize-none"
+                  className={`w-full bg-slate-900 border ${formErrors.description ? 'border-red-500' : 'border-slate-700'} rounded-lg p-3 text-white h-24 focus:border-amber-500 focus:outline-none resize-none`}
                   placeholder="What is your guild about?"
                 />
                 {formErrors.description && (
@@ -259,6 +293,39 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
           </div>
         ) : (
           <>
+            {activeTab === 'friends' && (
+               <div className="p-4 space-y-3">
+                  {friends.length === 0 ? (
+                     <div className="text-center text-slate-500 py-10">
+                        <p>No friends yet. Add some!</p>
+                     </div>
+                  ) : (
+                     friends.map(friend => (
+                        <div key={friend.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
+                           <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 overflow-hidden">
+                                 <img src={`https://picsum.photos/seed/${friend.username}/100/100`} alt="Friend" />
+                              </div>
+                              <div>
+                                 <h4 className="font-bold text-slate-200 text-sm">{friend.username}</h4>
+                                 <div className="text-[10px] text-slate-500">Lvl {friend.level} {friend.class}</div>
+                              </div>
+                           </div>
+                           <div className="flex items-center gap-1.5">
+                              {friend.status === 'online' ? (
+                                 <span className="flex items-center gap-1 text-[10px] text-green-400 font-bold bg-green-900/20 px-2 py-0.5 rounded-full border border-green-900">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Online
+                                 </span>
+                              ) : (
+                                 <span className="text-[10px] text-slate-600 font-bold">{friend.lastSeen}</span>
+                              )}
+                           </div>
+                        </div>
+                     ))
+                  )}
+               </div>
+            )}
+
             {activeTab === 'chat' && userGuildId && (
               <div className="flex-1 flex flex-col h-full">
                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -335,8 +402,11 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                   if (isMyGuild) {
                     button = (
                       <button 
-                        onClick={() => setConfirmation({ type: 'leave', guild })}
-                        className="px-3 py-1.5 border border-red-900 bg-red-900/20 text-red-400 rounded-lg text-xs font-bold hover:bg-red-900/40 transition-colors flex items-center gap-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmation({ type: 'leave', guild });
+                        }}
+                        className="px-3 py-1.5 border border-red-900 bg-red-900/20 text-red-400 rounded-lg text-xs font-bold hover:bg-red-900/40 transition-colors flex items-center gap-1 shrink-0"
                       >
                         <LogOut className="w-3 h-3" /> Leave
                       </button>
@@ -344,22 +414,25 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                   } else if (!userGuildId && !isFull) {
                     button = (
                       <button 
-                        onClick={() => setConfirmation({ type: 'join', guild })}
-                        className="px-3 py-1.5 border border-amber-600 text-amber-500 rounded-lg text-xs font-bold hover:bg-amber-600/10 transition-colors flex items-center gap-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmation({ type: 'join', guild });
+                        }}
+                        className="px-3 py-1.5 border border-amber-600 text-amber-500 rounded-lg text-xs font-bold hover:bg-amber-600/10 transition-colors flex items-center gap-1 shrink-0"
                       >
                          <LogIn className="w-3 h-3" /> Join
                       </button>
                     );
                   } else if (isFull) {
                     button = (
-                      <span className="px-3 py-1.5 text-slate-600 text-xs font-bold cursor-not-allowed">
+                      <span className="px-3 py-1.5 text-slate-600 text-xs font-bold cursor-not-allowed shrink-0">
                         Full
                       </span>
                     );
                   } else {
                      // User is in another guild
                      button = (
-                      <span className="px-3 py-1.5 text-slate-600 text-xs font-bold cursor-not-allowed">
+                      <span className="px-3 py-1.5 text-slate-600 text-xs font-bold cursor-not-allowed shrink-0">
                         Join
                       </span>
                      );
@@ -368,7 +441,8 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                   return (
                     <div 
                       key={guild.id} 
-                      className={`bg-slate-900 border rounded-xl p-4 flex items-center gap-4 transition-colors ${isMyGuild ? 'border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.1)]' : 'border-slate-800 hover:border-slate-600'}`}
+                      onClick={() => handleGuildClick(guild)}
+                      className={`bg-slate-900 border rounded-xl p-4 flex items-center gap-4 transition-colors cursor-pointer active:scale-[0.98] ${isMyGuild ? 'border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.1)]' : 'border-slate-800 hover:border-slate-600'}`}
                     >
                       <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 shrink-0 relative">
                         {getIcon(guild.icon)}
@@ -411,7 +485,11 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
                   if (index === 2) rankStyle = "bg-amber-700/20 text-amber-700 border-amber-700/50";
 
                   return (
-                    <div key={guild.id} className="flex items-center gap-3 bg-slate-900 border border-slate-800 p-3 rounded-lg">
+                    <div 
+                      key={guild.id} 
+                      onClick={() => handleGuildClick(guild)}
+                      className="flex items-center gap-3 bg-slate-900 border border-slate-800 p-3 rounded-lg cursor-pointer hover:bg-slate-800/50 transition-colors"
+                    >
                       <div className={`w-8 h-8 flex items-center justify-center rounded font-bold border ${rankStyle}`}>
                         {guild.rank}
                       </div>
@@ -475,6 +553,51 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, onJoinGuil
             </div>
           </div>
         </div>
+      )}
+
+      {/* View Guild Details Modal */}
+      {selectedGuild && (
+         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-600 p-6 rounded-2xl w-full max-w-sm shadow-2xl relative">
+              <button 
+                onClick={() => setSelectedGuild(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <div className="flex flex-col items-center mb-6">
+                 <div className="w-20 h-20 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center mb-4">
+                    {getIcon(selectedGuild.icon, "w-10 h-10")}
+                 </div>
+                 <h2 className="text-2xl font-bold text-white text-center">{selectedGuild.name}</h2>
+                 <span className="text-amber-500 font-mono font-bold mt-1 text-sm">Rank #{selectedGuild.rank}</span>
+              </div>
+
+              <div className="bg-slate-950/50 rounded-lg p-4 mb-6 border border-slate-800">
+                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Manifesto</h4>
+                 <p className="text-slate-300 text-sm leading-relaxed italic">"{selectedGuild.description}"</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                 <div className="bg-slate-800 rounded-lg p-3 text-center">
+                    <div className="text-xs text-slate-400 uppercase">Members</div>
+                    <div className="font-bold text-xl text-white">{selectedGuild.members} / {selectedGuild.maxMembers}</div>
+                 </div>
+                 <div className="bg-slate-800 rounded-lg p-3 text-center">
+                    <div className="text-xs text-slate-400 uppercase">Total XP</div>
+                    <div className="font-bold text-xl text-amber-500">{(selectedGuild.totalXp / 1000).toFixed(1)}k</div>
+                 </div>
+              </div>
+
+              <button 
+                onClick={() => setSelectedGuild(null)}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-slate-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+         </div>
       )}
     </div>
   );

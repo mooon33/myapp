@@ -1,4 +1,4 @@
-import { UserProfile, ClassType, WorkoutNode, InventoryItem, Guild, ChatMessage, ShopItem } from './types';
+import { UserProfile, ClassType, WorkoutNode, InventoryItem, Guild, ChatMessage, ShopItem, Friend, SpriteMilestone } from './types';
 
 export const MOCK_USER: UserProfile = {
   id: 'u-123',
@@ -59,8 +59,19 @@ export const MOCK_SHOP_ITEMS: ShopItem[] = [
     type: 'consumable',
     rarity: 'common',
     price: 50,
+    minLevel: 1,
     description: 'Instantly restores energy and boosts recovery.',
     image_url: 'https://picsum.photos/seed/potion/100/100',
+  },
+  {
+    id: 's-4',
+    name: 'Chalk of Grip',
+    type: 'consumable',
+    rarity: 'common',
+    price: 25,
+    minLevel: 1,
+    description: 'Never let go. Increases grip strength for one session.',
+    image_url: 'https://picsum.photos/seed/chalk/100/100',
   },
   {
     id: 's-2',
@@ -68,6 +79,7 @@ export const MOCK_SHOP_ITEMS: ShopItem[] = [
     type: 'accessory',
     rarity: 'rare',
     price: 350,
+    minLevel: 5,
     statBonus: { str: 5 },
     description: 'Increases core stability. Adds +5 STR.',
     image_url: 'https://picsum.photos/seed/belt/100/100',
@@ -78,18 +90,21 @@ export const MOCK_SHOP_ITEMS: ShopItem[] = [
     type: 'weapon',
     rarity: 'epic',
     price: 800,
+    minLevel: 10,
     statBonus: { will: 8, str: 3 },
     description: 'Wrist wraps infused with ancient rage.',
     image_url: 'https://picsum.photos/seed/wraps/100/100',
   },
   {
-    id: 's-4',
-    name: 'Chalk of Grip',
-    type: 'consumable',
-    rarity: 'common',
-    price: 25,
-    description: 'Never let go. Increases grip strength for one session.',
-    image_url: 'https://picsum.photos/seed/chalk/100/100',
+    id: 's-5',
+    name: 'Golden Dumbbell',
+    type: 'weapon',
+    rarity: 'legendary',
+    price: 2500,
+    minLevel: 20,
+    statBonus: { str: 15 },
+    description: 'Forged in the heart of a dying star.',
+    image_url: 'https://picsum.photos/seed/golddumb/100/100',
   },
 ];
 
@@ -239,4 +254,19 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = [
   { id: 'm-2', senderId: 'u-42', senderName: 'BuffWizard', text: 'Always. Never skip leg day.', timestamp: '10:32 AM' },
   { id: 'm-3', senderId: 'u-55', senderName: 'GymRat99', text: 'My squat max is stuck at 140kg though :/', timestamp: '10:33 AM' },
   { id: 'm-4', senderId: 'u-42', senderName: 'BuffWizard', text: 'Have you tried a deload week? Works wonders for the nervous system.', timestamp: '10:35 AM' },
+];
+
+export const MOCK_FRIENDS: Friend[] = [
+  { id: 'f-1', username: 'SarahSquats', level: 12, class: ClassType.WARRIOR, status: 'online' },
+  { id: 'f-2', username: 'MikeMarathon', level: 8, class: ClassType.SCOUT, status: 'offline', lastSeen: '2h ago' },
+  { id: 'f-3', username: 'ZenMaster', level: 15, class: ClassType.MONK, status: 'online' },
+];
+
+export const SPRITE_EVOLUTION: SpriteMilestone[] = [
+  { level: 1, title: 'Novice', imageUrl: 'https://picsum.photos/seed/lvl1/200/200' },
+  { level: 5, title: 'Apprentice', imageUrl: 'https://picsum.photos/seed/lvl5/200/200' },
+  { level: 10, title: 'Adept', imageUrl: 'https://picsum.photos/seed/lvl10/200/200' },
+  { level: 20, title: 'Expert', imageUrl: 'https://picsum.photos/seed/lvl20/200/200' },
+  { level: 30, title: 'Master', imageUrl: 'https://picsum.photos/seed/lvl30/200/200' },
+  { level: 50, title: 'Legend', imageUrl: 'https://picsum.photos/seed/lvl50/200/200' },
 ];

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { UserProfile, ClassType } from '../types';
-import { Shield, Zap, Brain, Trophy, ChevronRight, X, Swords, Activity, Target } from 'lucide-react';
+import { UserProfile, ClassType, Stats } from '../types';
+import { Shield, Zap, Brain, Trophy, ChevronRight, X, Swords, Activity, Target, Pencil, Save } from 'lucide-react';
 
 interface Props {
   user: UserProfile;
   onUpdateClass?: (newClass: ClassType) => void;
+  onUpdateStats?: (newStats: Stats) => void;
 }
 
 const CLASS_DESCRIPTIONS = {
@@ -19,9 +20,13 @@ const ATTRIBUTE_INFO = {
   will: { name: "Willpower (WILL)", desc: "Enhances mental focus, streak protection, and resistance to fatigue." }
 };
 
-const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass }) => {
+const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass, onUpdateStats }) => {
   const [showClassSelector, setShowClassSelector] = useState(false);
   const [activeAttribute, setActiveAttribute] = useState<keyof typeof ATTRIBUTE_INFO | null>(null);
+  
+  // Stats Editing State
+  const [isEditingStats, setIsEditingStats] = useState(false);
+  const [tempStats, setTempStats] = useState<Stats>(user.stats);
 
   const xpPercentage = (user.current_xp / user.max_xp) * 100;
 
@@ -32,42 +37,44 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass }) => {
     setShowClassSelector(false);
   };
 
+  const handleSaveStats = () => {
+    if (onUpdateStats) {
+      onUpdateStats(tempStats);
+    }
+    setIsEditingStats(false);
+  };
+
   return (
     <div className="w-full bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl relative">
       {/* Background/Banner */}
       <div className="h-32 bg-gradient-to-r from-violet-900 to-slate-900 relative overflow-hidden group">
         <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
         
-        {/* Class Change Button (Top Right) */}
-        <div className="absolute top-2 right-2">
-            <button 
-              onClick={() => setShowClassSelector(true)}
-              className="text-[10px] bg-black/40 hover:bg-black/60 text-white px-2 py-1 rounded border border-white/10 backdrop-blur-sm flex items-center gap-1 transition-colors uppercase font-bold tracking-wider"
-            >
-              Change Class <ChevronRight className="w-3 h-3" />
-            </button>
-        </div>
-
-        <div className="absolute bottom-4 left-4 flex items-end space-x-4">
-          <div className="w-24 h-24 rounded-full border-4 border-slate-800 bg-slate-700 overflow-hidden shadow-lg relative z-10 group-hover:scale-105 transition-transform duration-300">
+        <div className="absolute bottom-4 left-4 flex items-end space-x-4 z-10 w-full pr-8">
+          <div className="w-24 h-24 rounded-full border-4 border-slate-800 bg-slate-700 overflow-hidden shadow-lg relative group-hover:scale-105 transition-transform duration-300">
              <img 
               src={`https://picsum.photos/seed/${user.username}/200/200`} 
               alt="Avatar" 
               className="w-full h-full object-cover"
             />
           </div>
-          <div className="mb-2">
+          <div className="mb-2 flex-1">
             <h2 className="text-2xl font-bold text-white tracking-wide flex items-center gap-2">
               {user.username}
               <span className="text-xs px-2 py-1 bg-amber-600 rounded text-slate-950 font-extrabold uppercase">
                 Lvl {user.level}
               </span>
             </h2>
+            
+            {/* Clickable Class Area */}
             <button 
               onClick={() => setShowClassSelector(true)}
-              className="text-slate-400 text-sm font-medium hover:text-white flex items-center gap-1 transition-colors"
+              className="mt-1 flex items-center gap-2 px-2 py-1 -ml-2 rounded-lg hover:bg-white/10 transition-colors group/btn"
             >
-               <span className="border-b border-dashed border-slate-500 hover:border-white">{user.class}</span>
+               <span className="text-slate-300 font-medium group-hover/btn:text-white border-b border-dashed border-slate-500 group-hover/btn:border-white transition-all">
+                 {user.class}
+               </span>
+               <ChevronRight className="w-4 h-4 text-slate-500 group-hover/btn:text-white" />
             </button>
           </div>
         </div>
@@ -119,24 +126,36 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass }) => {
           </button>
         </div>
 
-        {/* Real Stats */}
+        {/* Real Stats (Editable) */}
         <div className="mt-4 border-t border-slate-800 pt-4">
-          <div className="flex items-center gap-2 mb-2 text-slate-300">
-            <Trophy className="w-4 h-4 text-amber-500" />
-            <span className="text-sm font-semibold uppercase">Personal Records</span>
+          <div className="flex justify-between items-center mb-3">
+             <div className="flex items-center gap-2 text-slate-300">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <span className="text-sm font-semibold uppercase">Personal Records</span>
+             </div>
+             <button 
+                onClick={() => {
+                  setTempStats(user.stats);
+                  setIsEditingStats(true);
+                }}
+                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-500 hover:text-white transition-colors"
+             >
+                <Pencil className="w-3 h-3" />
+             </button>
           </div>
+          
           <div className="grid grid-cols-3 gap-2 text-center text-sm">
-             <div>
-                <div className="text-slate-500 text-xs">Squat</div>
-                <div className="font-mono text-slate-200">{user.stats.squat_1rm}kg</div>
+             <div className="bg-slate-950/50 p-2 rounded border border-slate-800">
+                <div className="text-slate-500 text-[10px] uppercase font-bold mb-1">Squat</div>
+                <div className="font-mono text-slate-200 font-bold">{user.stats.squat_1rm} <span className="text-[10px] text-slate-500">kg</span></div>
              </div>
-             <div>
-                <div className="text-slate-500 text-xs">Bench</div>
-                <div className="font-mono text-slate-200">{user.stats.bench_1rm}kg</div>
+             <div className="bg-slate-950/50 p-2 rounded border border-slate-800">
+                <div className="text-slate-500 text-[10px] uppercase font-bold mb-1">Bench</div>
+                <div className="font-mono text-slate-200 font-bold">{user.stats.bench_1rm} <span className="text-[10px] text-slate-500">kg</span></div>
              </div>
-             <div>
-                <div className="text-slate-500 text-xs">Deadlift</div>
-                <div className="font-mono text-slate-200">{user.stats.deadlift_1rm}kg</div>
+             <div className="bg-slate-950/50 p-2 rounded border border-slate-800">
+                <div className="text-slate-500 text-[10px] uppercase font-bold mb-1">Deadlift</div>
+                <div className="font-mono text-slate-200 font-bold">{user.stats.deadlift_1rm} <span className="text-[10px] text-slate-500">kg</span></div>
              </div>
           </div>
         </div>
@@ -144,9 +163,63 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass }) => {
 
       {/* --- MODALS --- */}
 
+      {/* Edit Stats Modal */}
+      {isEditingStats && (
+         <div className="absolute inset-0 z-30 bg-slate-950/95 backdrop-blur-sm p-6 flex items-center justify-center animate-in fade-in duration-200">
+            <div className="w-full max-w-xs">
+               <h3 className="text-lg font-bold text-white mb-6 text-center">Update Records</h3>
+               
+               <div className="space-y-4 mb-6">
+                  <div>
+                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Squat (kg)</label>
+                     <input 
+                        type="number" 
+                        value={tempStats.squat_1rm}
+                        onChange={(e) => setTempStats(prev => ({...prev, squat_1rm: Number(e.target.value)}))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white font-mono focus:border-amber-500 outline-none"
+                     />
+                  </div>
+                  <div>
+                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Bench Press (kg)</label>
+                     <input 
+                        type="number" 
+                        value={tempStats.bench_1rm}
+                        onChange={(e) => setTempStats(prev => ({...prev, bench_1rm: Number(e.target.value)}))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white font-mono focus:border-amber-500 outline-none"
+                     />
+                  </div>
+                  <div>
+                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Deadlift (kg)</label>
+                     <input 
+                        type="number" 
+                        value={tempStats.deadlift_1rm}
+                        onChange={(e) => setTempStats(prev => ({...prev, deadlift_1rm: Number(e.target.value)}))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white font-mono focus:border-amber-500 outline-none"
+                     />
+                  </div>
+               </div>
+
+               <div className="flex gap-3">
+                  <button 
+                     onClick={() => setIsEditingStats(false)}
+                     className="flex-1 py-2 rounded-lg font-bold bg-slate-800 text-slate-400 hover:bg-slate-700"
+                  >
+                     Cancel
+                  </button>
+                  <button 
+                     onClick={handleSaveStats}
+                     className="flex-1 py-2 rounded-lg font-bold bg-amber-600 text-slate-950 hover:bg-amber-500 flex items-center justify-center gap-2"
+                  >
+                     <Save className="w-4 h-4" /> Save
+                  </button>
+               </div>
+            </div>
+         </div>
+      )}
+
       {/* Class Selector Modal */}
       {showClassSelector && (
-        <div className="absolute inset-0 z-20 bg-slate-950/95 backdrop-blur-sm p-4 flex flex-col animate-in fade-in duration-200">
+        <div className="absolute inset-0 z-30 bg-slate-950/95 backdrop-blur-sm p-4 flex flex-col animate-in fade-in duration-200">
            <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-2">
              <h3 className="text-lg font-bold text-white">Select Class</h3>
              <button onClick={() => setShowClassSelector(false)}><X className="w-6 h-6 text-slate-400 hover:text-white" /></button>
@@ -188,7 +261,7 @@ const CharacterDisplay: React.FC<Props> = ({ user, onUpdateClass }) => {
       {/* Attribute Info Modal */}
       {activeAttribute && (
         <div 
-          className="absolute inset-0 z-20 bg-black/60 backdrop-blur-[2px] flex items-center justify-center p-6 animate-in fade-in duration-200"
+          className="absolute inset-0 z-30 bg-black/60 backdrop-blur-[2px] flex items-center justify-center p-6 animate-in fade-in duration-200"
           onClick={() => setActiveAttribute(null)}
         >
            <div className="bg-slate-900 border border-slate-600 p-6 rounded-xl shadow-2xl w-full max-w-xs text-center transform scale-100" onClick={e => e.stopPropagation()}>

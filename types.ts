@@ -28,6 +28,7 @@ export interface Item {
 export interface ShopItem extends Item {
   price: number;
   description: string;
+  minLevel: number; // Tier requirement
 }
 
 export interface UserProfile {
@@ -88,10 +89,32 @@ export interface Guild {
   icon: 'shield' | 'sword' | 'crown' | 'zap';
 }
 
+export interface Friend {
+  id: string;
+  username: string;
+  level: number;
+  class: ClassType;
+  status: 'online' | 'offline';
+  lastSeen?: string;
+}
+
 export interface ChatMessage {
   id: string;
   senderId: string;
   senderName: string;
   text: string;
   timestamp: string;
+}
+
+export interface AppSettings {
+  soundEnabled: boolean;
+  notificationsEnabled: boolean;
+  language: 'en' | 'ru' | 'es';
+  theme: 'dark' | 'light';
+}
+
+export interface SpriteMilestone {
+  level: number;
+  title: string;
+  imageUrl: string;
 }

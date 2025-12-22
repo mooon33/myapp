@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserProfile, WorkoutNode, Guild, ShopItem, ClassType } from './types';
+import { UserProfile, WorkoutNode, Guild, ShopItem, ClassType, AppSettings, Stats } from './types';
 import { MOCK_USER, CAMPAIGN_MAP, MOCK_INVENTORY, MOCK_GUILDS, MOCK_SHOP_ITEMS } from './constants';
 import CharacterDisplay from './components/CharacterDisplay';
 import WorkoutMap from './components/WorkoutMap';
@@ -8,10 +8,11 @@ import Inventory from './components/Inventory';
 import GuildsView from './components/GuildsView';
 import ShopView from './components/ShopView';
 import SettingsView from './components/SettingsView';
-import { Map, User as UserIcon, Users, Settings, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
+import EvolutionView from './components/EvolutionView';
+import { Map, User as UserIcon, Users, Settings, ShoppingBag, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 
 // Using a simple View state instead of Router for this demo
-type ViewState = 'map' | 'profile' | 'guild' | 'workout' | 'shop' | 'settings';
+type ViewState = 'map' | 'profile' | 'guild' | 'workout' | 'shop' | 'settings' | 'evolution';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('map');
@@ -20,6 +21,12 @@ const App: React.FC = () => {
   const [guilds, setGuilds] = useState<Guild[]>(MOCK_GUILDS);
   const [currentChapter, setCurrentChapter] = useState(1);
   const [userInventory, setUserInventory] = useState(MOCK_INVENTORY);
+  const [settings, setSettings] = useState<AppSettings>({
+    soundEnabled: true,
+    notificationsEnabled: true,
+    language: 'en',
+    theme: 'dark'
+  });
   
   // Confetti/Level up state (simplified for demo)
   const [notification, setNotification] = useState<string | null>(null);
@@ -30,9 +37,22 @@ const App: React.FC = () => {
     setTimeout(() => setNotification(null), duration);
   };
 
+  const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
+    setSettings(prev => ({ ...prev, ...newSettings }));
+  };
+
+  const handleLogout = () => {
+    triggerNotification("Logged out successfully");
+  };
+
   const handleUpdateClass = (newClass: ClassType) => {
     setUser(prev => ({ ...prev, class: newClass }));
     triggerNotification(`Class changed to ${newClass}!`);
+  };
+
+  const handleUpdateStats = (newStats: Stats) => {
+    setUser(prev => ({ ...prev, stats: newStats }));
+    triggerNotification("Personal Records Updated!");
   };
 
   const handleNodeClick = (node: WorkoutNode) => {
@@ -127,16 +147,14 @@ const App: React.FC = () => {
       is_equipped: false,
     };
     
-    // Remove description/price for inventory type compatibility if strictly typed, 
-    // but TS allows extra props usually. casting for safety
     setUserInventory(prev => [...prev, newItem]);
-    
     triggerNotification(`Purchased ${item.name}!`);
   };
 
   // Filter nodes for current chapter
   const currentNodes = CAMPAIGN_MAP.filter(n => n.chapter === currentChapter);
   const maxChapters = Math.max(...CAMPAIGN_MAP.map(n => n.chapter || 1));
+  const xpPercentage = Math.min(100, (user.current_xp / user.max_xp) * 100);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex justify-center">
@@ -153,22 +171,31 @@ const App: React.FC = () => {
           />
         ) : (
           <>
-            {/* Top Bar (Sticky) */}
-            <div className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 p-3 flex justify-between items-center">
-               <div className="flex items-center gap-2">
-                 <div className="w-8 h-8 rounded bg-amber-600 flex items-center justify-center font-bold text-slate-900">
+            {/* Top Bar (Sticky) - UPDATED DESIGN */}
+            <div className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 p-2 flex justify-between items-center gap-3 shadow-lg">
+               {/* Left: Level & XP */}
+               <div className="flex items-center gap-3 flex-1 bg-slate-900/80 p-1.5 pr-4 rounded-full border border-slate-800">
+                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center font-black text-slate-900 border-2 border-slate-900 shrink-0 shadow-lg">
                     {user.level}
                  </div>
-                 <div className="flex flex-col">
-                    <span className="text-xs text-slate-400">Gold</span>
-                    <span className="text-sm font-mono text-amber-400">{user.gold} 🪙</span>
+                 <div className="flex flex-col flex-1 gap-0.5">
+                    <div className="flex justify-between text-[9px] uppercase font-bold text-slate-400">
+                       <span>XP</span>
+                       <span>{Math.floor(xpPercentage)}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/50">
+                       <div className="h-full bg-violet-500 rounded-full" style={{ width: `${xpPercentage}%` }}></div>
+                    </div>
                  </div>
                </div>
                
-               <div className="flex items-center gap-4">
-                  <div className="text-xs font-bold text-orange-500 animate-pulse hidden sm:block">
-                    🔥 {user.streak} Day Streak
+               {/* Right: Gold & Settings */}
+               <div className="flex items-center gap-2">
+                  <div className="bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800 flex items-center gap-1.5">
+                     <span className="text-amber-400 font-mono font-bold text-sm">{user.gold}</span>
+                     <span className="text-lg">🪙</span>
                   </div>
+
                   <button 
                     onClick={() => setView('settings')}
                     className={`p-2 rounded-full transition-colors ${view === 'settings' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}
@@ -180,16 +207,16 @@ const App: React.FC = () => {
 
             {/* Notification Toast */}
             {notification && (
-              <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-slate-950 px-6 py-3 rounded-full font-bold shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-bounce text-center whitespace-nowrap">
+              <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-amber-600 to-amber-500 text-slate-950 px-6 py-3 rounded-full font-bold shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-bounce text-center max-w-[90%] w-auto break-words border-2 border-amber-300">
                 {notification}
               </div>
             )}
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto pb-24">
+            <div className="flex-1 overflow-y-auto pb-24 bg-slate-950">
               {view === 'map' && (
                 <div className="p-4">
-                  <CharacterDisplay user={user} onUpdateClass={handleUpdateClass} />
+                  <CharacterDisplay user={user} onUpdateClass={handleUpdateClass} onUpdateStats={handleUpdateStats} />
                   
                   <div className="mt-6">
                     {/* Chapter Header & Controls */}
@@ -224,7 +251,7 @@ const App: React.FC = () => {
               {view === 'profile' && (
                  <div className="p-4">
                     <h2 className="text-2xl font-bold mb-4">Hero Profile</h2>
-                    <CharacterDisplay user={user} onUpdateClass={handleUpdateClass} />
+                    <CharacterDisplay user={user} onUpdateClass={handleUpdateClass} onUpdateStats={handleUpdateStats} />
                     <div className="mt-6">
                        <Inventory items={userInventory} />
                     </div>
@@ -246,47 +273,64 @@ const App: React.FC = () => {
                 <ShopView 
                   items={MOCK_SHOP_ITEMS} 
                   userGold={user.gold} 
+                  userLevel={user.level}
                   onBuy={handleBuyItem} 
                 />
               )}
 
+              {view === 'evolution' && (
+                <EvolutionView user={user} />
+              )}
+
               {view === 'settings' && (
-                <SettingsView />
+                <SettingsView 
+                  settings={settings}
+                  onUpdateSettings={handleUpdateSettings}
+                  onLogout={handleLogout}
+                />
               )}
             </div>
 
             {/* Bottom Navigation */}
-            <div className="fixed bottom-0 w-full max-w-md bg-slate-900 border-t border-slate-800 p-2 pb-4 flex justify-between px-6 items-center z-40">
+            <div className="fixed bottom-0 w-full max-w-md bg-slate-900 border-t border-slate-800 p-2 pb-4 flex justify-between px-2 items-center z-40">
               <button 
                 onClick={() => setView('map')}
-                className={`flex flex-col items-center gap-1 p-2 rounded-lg w-16 transition-colors ${view === 'map' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`flex flex-col items-center gap-1 p-2 rounded-lg flex-1 transition-colors ${view === 'map' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 <Map className="w-6 h-6" />
-                <span className="text-[10px] uppercase font-bold">Map</span>
+                <span className="text-[9px] uppercase font-bold">Map</span>
               </button>
               
               <button 
                 onClick={() => setView('guild')}
-                className={`flex flex-col items-center gap-1 p-2 rounded-lg w-16 transition-colors ${view === 'guild' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`flex flex-col items-center gap-1 p-2 rounded-lg flex-1 transition-colors ${view === 'guild' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 <Users className="w-6 h-6" />
-                <span className="text-[10px] uppercase font-bold">Guilds</span>
+                <span className="text-[9px] uppercase font-bold">Social</span>
+              </button>
+
+              <button 
+                onClick={() => setView('evolution')}
+                className={`flex flex-col items-center gap-1 p-2 rounded-lg flex-1 transition-colors ${view === 'evolution' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <Sparkles className="w-6 h-6" />
+                <span className="text-[9px] uppercase font-bold">Evolve</span>
               </button>
 
               <button 
                 onClick={() => setView('shop')}
-                className={`flex flex-col items-center gap-1 p-2 rounded-lg w-16 transition-colors ${view === 'shop' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`flex flex-col items-center gap-1 p-2 rounded-lg flex-1 transition-colors ${view === 'shop' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 <ShoppingBag className="w-6 h-6" />
-                <span className="text-[10px] uppercase font-bold">Shop</span>
+                <span className="text-[9px] uppercase font-bold">Shop</span>
               </button>
 
               <button 
                  onClick={() => setView('profile')}
-                 className={`flex flex-col items-center gap-1 p-2 rounded-lg w-16 transition-colors ${view === 'profile' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
+                 className={`flex flex-col items-center gap-1 p-2 rounded-lg flex-1 transition-colors ${view === 'profile' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 <UserIcon className="w-6 h-6" />
-                <span className="text-[10px] uppercase font-bold">Hero</span>
+                <span className="text-[9px] uppercase font-bold">Hero</span>
               </button>
             </div>
           </>
