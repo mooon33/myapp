@@ -227,10 +227,10 @@ const App: React.FC = () => {
 
     setUser(updatedUser);
 
+    // Only notify on Level Up. 
+    // The "Quest Complete" notification is removed because the Victory Screen already displays rewards.
     if (leveledUp) {
        triggerNotification(`${t.levelUp} ${t.lvl} ${updatedUser.level}`, 5000);
-    } else {
-       triggerNotification(`${t.questComplete} +${xp} ${t.xp}, +${gold} Gold`, 3000);
     }
 
     setView('map');
