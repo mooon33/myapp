@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ClassType, UserProfile } from '../types';
-import { User, Ruler, Weight as WeightIcon, Sword, Activity, Target, ChevronRight, Check } from 'lucide-react';
+import { Ruler, Weight as WeightIcon, Sword, Activity, Target, ChevronRight, Check } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 
 interface Props {

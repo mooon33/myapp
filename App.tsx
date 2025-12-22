@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabaseClient';
 import { Session, User } from '@supabase/supabase-js';
-import { UserProfile, WorkoutNode, Guild, ShopItem, ClassType, AppSettings, Stats, InventoryItem } from './types';
-import { MOCK_USER, CAMPAIGN_MAP, MOCK_INVENTORY, MOCK_GUILDS, MOCK_SHOP_ITEMS, TRANSLATIONS } from './constants';
+import { UserProfile, WorkoutNode, Guild, ShopItem, ClassType, AppSettings, Stats, InventoryItem, TrainingPath, WorkoutInvite } from './types';
+import { MOCK_USER, CAMPAIGN_DATA, MOCK_INVENTORY, MOCK_GUILDS, MOCK_SHOP_ITEMS, TRANSLATIONS } from './constants';
 import CharacterDisplay from './components/CharacterDisplay';
 import WorkoutMap from './components/WorkoutMap';
 import ActiveSession from './components/ActiveSession';
@@ -13,7 +13,7 @@ import SettingsView from './components/SettingsView';
 import EvolutionView from './components/EvolutionView';
 import AuthView from './components/AuthView';
 import OnboardingView from './components/OnboardingView';
-import { Map, User as UserIcon, Users, Settings, ShoppingBag, ChevronLeft, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
+import { Map, User as UserIcon, Users, Settings, ShoppingBag, ChevronLeft, ChevronRight, Sparkles, Loader2, Mail, Dumbbell, Weight as WeightIcon, Zap, Home, Activity } from 'lucide-react';
 
 type ViewState = 'onboarding' | 'map' | 'profile' | 'guild' | 'workout' | 'shop' | 'settings' | 'evolution';
 
@@ -33,6 +33,9 @@ const App: React.FC = () => {
   });
   
   const [notification, setNotification] = useState<string | null>(null);
+  const [incomingInvite, setIncomingInvite] = useState<WorkoutInvite | null>(null);
+  const [partnerMode, setPartnerMode] = useState<string | null>(null); // Name of partner
+
   const t = TRANSLATIONS[settings.language];
 
   // --- Auth & Data Loading ---
@@ -42,6 +45,7 @@ const App: React.FC = () => {
       setSession(session);
       if (session) {
         fetchUserProfile(session.user);
+        listenForInvites(session.user.id);
       } else {
         setIsLoading(false);
       }
@@ -51,6 +55,7 @@ const App: React.FC = () => {
       setSession(session);
       if (session) {
         fetchUserProfile(session.user);
+        listenForInvites(session.user.id);
       } else {
         setUser(null);
         setIsLoading(false);
@@ -59,6 +64,30 @@ const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const listenForInvites = (userId: string) => {
+      // Simulate real-time invite listening via Supabase table 'workout_invites'
+      const channel = supabase
+        .channel('public:workout_invites')
+        .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'workout_invites', filter: `receiver_id=eq.${userId}` },
+            (payload) => {
+                const invite = payload.new;
+                // In real app, fetch sender name. Mocking here.
+                setIncomingInvite({
+                    id: invite.id,
+                    senderId: invite.sender_id,
+                    senderName: 'Friend', // Should fetch
+                    workoutId: invite.workout_id,
+                    status: 'pending'
+                });
+            }
+        )
+        .subscribe();
+      
+      return () => { supabase.removeChannel(channel); };
+  };
 
   const fetchUserProfile = async (authUser: User) => {
     try {
@@ -77,6 +106,7 @@ const App: React.FC = () => {
            id: data.id,
            username: data.username || authUser.email?.split('@')[0] || 'Hero',
            class: data.class as ClassType,
+           trainingPath: data.training_path as TrainingPath || TrainingPath.BODYBUILDING,
            level: data.level,
            current_xp: data.current_xp,
            max_xp: data.max_xp,
@@ -114,6 +144,7 @@ const App: React.FC = () => {
       id: authUser.id,
       username: username,
       class: ClassType.WARRIOR,
+      training_path: TrainingPath.BODYBUILDING,
       level: 1,
       current_xp: 0,
       max_xp: 1000,
@@ -128,7 +159,7 @@ const App: React.FC = () => {
     const { error } = await supabase.from('profiles').insert([newProfile]);
     
     if (!error) {
-      setUser({ ...newProfile, guildId: null });
+      setUser({ ...newProfile, guildId: null } as any);
       setView('onboarding');
     } else {
       console.error('Error creating profile:', error);
@@ -205,6 +236,17 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateTrainingPath = async (newPath: TrainingPath) => {
+    if (!user) return;
+    setUser(prev => prev ? ({ ...prev, trainingPath: newPath }) : null);
+    const { error } = await supabase.from('profiles').update({ training_path: newPath }).eq('id', user.id);
+    if (error) {
+       triggerNotification("Failed to update path");
+    } else {
+       triggerNotification(`${t.selectPath}: ${newPath}`);
+    }
+  };
+
   const handleNodeClick = (node: WorkoutNode) => {
     setActiveNode(node);
     setView('workout');
@@ -226,9 +268,8 @@ const App: React.FC = () => {
     };
 
     setUser(updatedUser);
+    setPartnerMode(null); // End partner session
 
-    // Only notify on Level Up. 
-    // The "Quest Complete" notification is removed because the Victory Screen already displays rewards.
     if (leveledUp) {
        triggerNotification(`${t.levelUp} ${t.lvl} ${updatedUser.level}`, 5000);
     }
@@ -248,6 +289,7 @@ const App: React.FC = () => {
   const handleExitWorkout = () => {
     setView('map');
     setActiveNode(null);
+    setPartnerMode(null);
   };
 
   const handleJoinGuild = (guildId: string) => {
@@ -321,31 +363,55 @@ const App: React.FC = () => {
     setUserInventory(prev => {
         const isEquipping = !item.is_equipped;
         return prev.map(i => {
-            // Toggle the specific item
             if (i.id === item.id) {
                 return { ...i, is_equipped: isEquipping };
             }
-            // If we are equipping a new item, ensure other items of the same type are unequipped
-            // We assume 'consumable' doesn't get equipped in the slot sense, but we'll stick to types.
             if (isEquipping && i.type === item.type && i.is_equipped && i.type !== 'consumable') {
                 return { ...i, is_equipped: false };
             }
             return i;
         });
     });
-    const action = !item.is_equipped ? t.equip : t.unequip; // status before toggle
+    const action = !item.is_equipped ? t.equip : t.unequip; 
     triggerNotification(`${action} ${item.name}`);
   };
 
-  // Simulates starting a shared workout with a friend
-  const handleStartSharedWorkout = (friendName: string) => {
-      triggerNotification(`${t.startingWorkout} ${friendName}`);
-      // Simulate finding a workout to start
-      const firstWorkout = CAMPAIGN_MAP.find(w => w.status === 'available' || w.status === 'completed');
-      if (firstWorkout) {
-          setTimeout(() => {
-            handleNodeClick(firstWorkout);
-          }, 1000);
+  // Sends an invite to a friend
+  const handleStartSharedWorkout = async (friendName: string, friendId: string) => {
+      triggerNotification(`${t.inviteToWorkout} ${friendName}...`);
+      
+      try {
+          // In real implementation, create record in workout_invites table
+          const workoutToShare = CAMPAIGN_DATA[user?.trainingPath || TrainingPath.BODYBUILDING][0];
+          await supabase.from('workout_invites').insert({
+              sender_id: user?.id,
+              receiver_id: friendId,
+              workout_id: workoutToShare.id,
+              status: 'pending'
+          });
+      } catch (e) {
+          console.error(e);
+      }
+  };
+  
+  const acceptInvite = () => {
+      if (!incomingInvite) return;
+      setPartnerMode(incomingInvite.senderName);
+      setIncomingInvite(null);
+      
+      // Find workout (mocking lookup)
+      const pathMaps = Object.values(CAMPAIGN_DATA);
+      let workout = null;
+      for (const map of pathMaps) {
+          workout = map.find(w => w.id === incomingInvite.workoutId);
+          if (workout) break;
+      }
+
+      if (workout) {
+          handleNodeClick(workout);
+      } else {
+          // Fallback if ID doesn't match local data
+          handleNodeClick(CAMPAIGN_DATA[TrainingPath.BODYBUILDING][0]);
       }
   };
 
@@ -371,9 +437,19 @@ const App: React.FC = () => {
     return <OnboardingView user={user} lang={settings.language} onComplete={handleCompleteOnboarding} />;
   }
 
-  const currentNodes = CAMPAIGN_MAP.filter(n => n.chapter === currentChapter);
-  const maxChapters = Math.max(...CAMPAIGN_MAP.map(n => n.chapter || 1));
+  // Dynamic Map based on selected path
+  const campaignMap = CAMPAIGN_DATA[user.trainingPath || TrainingPath.BODYBUILDING] || CAMPAIGN_DATA[TrainingPath.BODYBUILDING];
+  const currentNodes = campaignMap.filter(n => n.chapter === currentChapter);
+  const maxChapters = Math.max(...campaignMap.map(n => n.chapter || 1));
   const xpPercentage = Math.min(100, (user.current_xp / user.max_xp) * 100);
+
+  const trainingPaths = [
+    { path: TrainingPath.BODYBUILDING, icon: Dumbbell, name: t.bodybuilding },
+    { path: TrainingPath.POWERLIFTING, icon: WeightIcon, name: t.powerlifting },
+    { path: TrainingPath.CROSSFIT, icon: Zap, name: t.crossfit },
+    { path: TrainingPath.HOME, icon: Home, name: t.homeWorkout },
+    { path: TrainingPath.STRETCHING, icon: Activity, name: t.stretching },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex justify-center">
@@ -384,6 +460,7 @@ const App: React.FC = () => {
             workout={activeNode} 
             user={user} 
             lang={settings.language}
+            partnerName={partnerMode}
             onComplete={handleWorkoutComplete}
             onExit={handleExitWorkout}
           />
@@ -429,12 +506,66 @@ const App: React.FC = () => {
               </div>
             )}
 
+            {incomingInvite && (
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-sm bg-slate-900 border border-amber-500 rounded-xl p-4 shadow-2xl animate-in slide-in-from-top-10">
+                    <div className="flex items-start gap-3">
+                        <div className="bg-amber-900/20 p-2 rounded-full">
+                            <Mail className="w-6 h-6 text-amber-500" />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-bold text-white">{t.workoutInvite}</h4>
+                            <p className="text-sm text-slate-400 mb-3">{incomingInvite.senderName} {t.friendRequestReceived}</p>
+                            <div className="flex gap-2">
+                                <button onClick={acceptInvite} className="flex-1 bg-green-600 hover:bg-green-500 text-white py-1.5 rounded-lg text-xs font-bold">{t.acceptInvite}</button>
+                                <button onClick={() => setIncomingInvite(null)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 rounded-lg text-xs font-bold">{t.declineInvite}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex-1 overflow-y-auto pb-24 bg-slate-950">
               {view === 'map' && (
                 <div className="p-4">
                   <CharacterDisplay user={user} lang={settings.language} onUpdateClass={handleUpdateClass} onUpdateStats={handleUpdateStats} />
                   
-                  <div className="mt-6">
+                  <div className="mt-8">
+                    {/* Training Path Selector */}
+                    <div className="mb-8">
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-1">{t.selectPath}</h3>
+                        <div className="overflow-x-auto pb-4 -mx-4 px-4 no-scrollbar flex gap-4 snap-x">
+                            {trainingPaths.map((p) => {
+                                const Icon = p.icon;
+                                const isActive = user.trainingPath === p.path;
+                                return (
+                                    <button
+                                        key={p.path}
+                                        onClick={() => handleUpdateTrainingPath(p.path)}
+                                        className={`relative flex-shrink-0 w-32 h-32 rounded-2xl border-2 flex flex-col items-center justify-center gap-3 transition-all duration-300 snap-center group overflow-hidden ${
+                                            isActive 
+                                            ? 'bg-gradient-to-br from-amber-900/40 to-slate-900 border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] scale-105' 
+                                            : 'bg-slate-900 border-slate-800 hover:border-slate-600 hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        {isActive && <div className="absolute inset-0 bg-amber-500/10 animate-pulse"></div>}
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border transition-colors ${
+                                            isActive 
+                                                ? 'bg-amber-500 text-slate-900 border-amber-400 shadow-lg' 
+                                                : 'bg-slate-800 text-slate-500 border-slate-700 group-hover:border-slate-500 group-hover:text-slate-300'
+                                        }`}>
+                                            <Icon className={`w-6 h-6 ${isActive ? 'animate-bounce' : ''}`} />
+                                        </div>
+                                        <span className={`text-[10px] font-black uppercase tracking-wider text-center px-2 leading-tight ${
+                                            isActive ? 'text-amber-400' : 'text-slate-500 group-hover:text-slate-300'
+                                        }`}>
+                                            {p.name}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
                     <div className="flex items-center justify-between mb-4 px-2">
                       <button 
                         onClick={() => setCurrentChapter(prev => Math.max(1, prev - 1))}
@@ -478,6 +609,7 @@ const App: React.FC = () => {
                     guilds={guilds}
                     userGuildId={user.guildId}
                     username={user.username}
+                    currentUserId={user.id}
                     lang={settings.language}
                     onJoinGuild={handleJoinGuild}
                     onLeaveGuild={handleLeaveGuild}

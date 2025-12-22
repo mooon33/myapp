@@ -5,6 +5,14 @@ export enum ClassType {
   MONK = 'Monk',
 }
 
+export enum TrainingPath {
+  BODYBUILDING = 'Bodybuilding',
+  POWERLIFTING = 'Powerlifting',
+  CROSSFIT = 'Crossfit',
+  HOME = 'Home Workout',
+  STRETCHING = 'Yoga & Stretching'
+}
+
 export interface Attributes {
   str: number; // Strength
   sta: number; // Endurance/Stamina
@@ -36,6 +44,7 @@ export interface UserProfile {
   id: string;
   username: string;
   class: ClassType;
+  trainingPath?: TrainingPath;
   level: number;
   current_xp: number;
   max_xp: number;
@@ -94,23 +103,33 @@ export interface Guild {
 }
 
 export interface Friend {
-  id: string;
+  id: string; // The ID of the friendship record
+  friendId: string; // The ID of the user
   username: string;
   level: number;
   class: ClassType;
-  status: 'online' | 'offline';
+  status: 'pending' | 'accepted'; // Friendship status
+  isSender: boolean; // Did I send the request?
   lastSeen?: string;
-  // Extended for profile view
   guildName?: string;
   stats?: Stats;
 }
 
 export interface ChatMessage {
   id: string;
+  guild_id: string;
+  user_id: string; // senderId
+  username: string; // senderName (joined)
+  content: string; // text
+  created_at: string; // timestamp
+}
+
+export interface WorkoutInvite {
+  id: string;
   senderId: string;
   senderName: string;
-  text: string;
-  timestamp: string;
+  workoutId: string;
+  status: 'pending' | 'accepted' | 'declined';
 }
 
 export interface AppSettings {

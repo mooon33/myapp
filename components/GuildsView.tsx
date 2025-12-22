@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Shield, Zap, Sword, Crown, Plus, Search, LogOut, LogIn, X, Send, MessageSquare, AlertCircle, UserPlus, Circle, Swords, Trophy, Activity, Dumbbell } from 'lucide-react';
-import { Guild, ChatMessage, Friend, ClassType } from '../types';
-import { MOCK_CHAT_MESSAGES, MOCK_FRIENDS, TRANSLATIONS } from '../constants';
+import { Users, Shield, Zap, Sword, Crown, Plus, Search, LogOut, LogIn, X, Send, MessageSquare, AlertCircle, UserPlus, Check, Trash2, UserX, Swords, ChevronRight } from 'lucide-react';
+import { Guild, ChatMessage, Friend, ClassType, UserProfile } from '../types';
+import { TRANSLATIONS } from '../constants';
+import { supabase } from '../lib/supabaseClient';
 
 interface Props {
   guilds: Guild[];
   userGuildId: string | null;
   username: string;
+  currentUserId: string; // Passed from App
   lang: 'en' | 'ru';
   onJoinGuild: (guildId: string) => void;
   onLeaveGuild: () => void;
   onCreateGuild: (data: { name: string; description: string; icon: Guild['icon'] }) => void;
-  onStartSharedWorkout: (friendName: string) => void;
+  onStartSharedWorkout: (friendName: string, friendId: string) => void;
 }
 
 interface ConfirmationState {
@@ -19,19 +21,20 @@ interface ConfirmationState {
   guild?: Guild;
 }
 
-const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, lang, onJoinGuild, onLeaveGuild, onCreateGuild, onStartSharedWorkout }) => {
+const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUserId, lang, onJoinGuild, onLeaveGuild, onCreateGuild, onStartSharedWorkout }) => {
   const [activeTab, setActiveTab] = useState<'find' | 'rankings' | 'chat' | 'friends'>('find');
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
   const [selectedGuild, setSelectedGuild] = useState<Guild | null>(null);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   
-  // Friends State (Mocked local state)
-  const [friends, setFriends] = useState<Friend[]>(MOCK_FRIENDS);
+  // Friends State
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
   const [friendSearchTerm, setFriendSearchTerm] = useState('');
   const [isFriendSearchLoading, setIsFriendSearchLoading] = useState(false);
-  const [friendSearchResult, setFriendSearchResult] = useState<string | null>(null);
+  const [foundUser, setFoundUser] = useState<UserProfile | null>(null);
+  const [friendSearchError, setFriendSearchError] = useState<string | null>(null);
   
   // Create Guild State
   const [isCreating, setIsCreating] = useState(false);
@@ -43,22 +46,105 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, lang, onJo
   const [formErrors, setFormErrors] = useState<{ name?: string; description?: string }>({});
 
   // Chat State
-  const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT_MESSAGES);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const t = TRANSLATIONS[lang];
 
-  // Automatically switch tabs if guild status changes
+  // Fetch Friends
   useEffect(() => {
-    if (userGuildId && activeTab === 'find') {
-      setActiveTab('chat');
+     if (activeTab === 'friends') {
+        fetchFriends();
+     }
+  }, [activeTab]);
+
+  const fetchFriends = async () => {
+    try {
+      // Fetch friendships where user is sender
+      const { data: sentRequests, error: sentError } = await supabase
+        .from('friends')
+        .select('*, friend:receiver_id(username, level, class)')
+        .eq('sender_id', currentUserId);
+
+      // Fetch friendships where user is receiver
+      const { data: receivedRequests, error: receivedError } = await supabase
+        .from('friends')
+        .select('*, friend:sender_id(username, level, class)')
+        .eq('receiver_id', currentUserId);
+
+      if (sentError) console.error(sentError);
+      if (receivedError) console.error(receivedError);
+
+      const mappedFriends: Friend[] = [];
+
+      sentRequests?.forEach((req: any) => {
+          mappedFriends.push({
+              id: req.id,
+              friendId: req.receiver_id,
+              username: req.friend?.username || 'Unknown',
+              level: req.friend?.level || 1,
+              class: req.friend?.class || ClassType.WARRIOR,
+              status: req.status,
+              isSender: true
+          });
+      });
+
+      receivedRequests?.forEach((req: any) => {
+          mappedFriends.push({
+              id: req.id,
+              friendId: req.sender_id,
+              username: req.friend?.username || 'Unknown',
+              level: req.friend?.level || 1,
+              class: req.friend?.class || ClassType.WARRIOR,
+              status: req.status,
+              isSender: false
+          });
+      });
+
+      setFriends(mappedFriends);
+
+    } catch (e) {
+      console.error("Failed to load friends", e);
     }
-    // If we leave a guild, switch to find if we were in chat
-    if (!userGuildId && activeTab === 'chat') {
-       setActiveTab('find');
-    }
-  }, [userGuildId]);
+  };
+
+  // Chat Subscription
+  useEffect(() => {
+    if (activeTab !== 'chat' || !userGuildId) return;
+
+    // Initial Fetch
+    const fetchMessages = async () => {
+        const { data, error } = await supabase
+            .from('guild_messages')
+            .select('*')
+            .eq('guild_id', userGuildId)
+            .order('created_at', { ascending: true })
+            .limit(50);
+        
+        if (!error && data) {
+            setMessages(data as ChatMessage[]);
+        }
+    };
+
+    fetchMessages();
+
+    // Realtime Subscription
+    const channel = supabase
+      .channel('public:guild_messages')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'guild_messages', filter: `guild_id=eq.${userGuildId}` },
+        (payload) => {
+          setMessages((current) => [...current, payload.new as ChatMessage]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeTab, userGuildId]);
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -92,20 +178,28 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, lang, onJo
     setConfirmation(null);
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !userGuildId) return;
 
-    const msg: ChatMessage = {
-      id: `m-${Date.now()}`,
-      senderId: 'current-user', 
-      senderName: username,
-      text: newMessage.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
+    const text = newMessage.trim();
+    setNewMessage(''); // Optimistic clear
 
-    setMessages([...messages, msg]);
-    setNewMessage('');
+    try {
+        const { error } = await supabase.from('guild_messages').insert({
+            guild_id: userGuildId,
+            user_id: currentUserId,
+            username: username,
+            content: text
+        });
+
+        if (error) {
+            console.error("Error sending message:", error);
+            // In a real app, restore text or show error toast
+        }
+    } catch (e) {
+        console.error("Network error:", e);
+    }
   };
 
   const validateCreateForm = () => {
@@ -133,42 +227,81 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, lang, onJo
      setSelectedGuild(guild);
   };
 
-  const handleSearchFriend = (e: React.FormEvent) => {
+  const handleSearchFriend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!friendSearchTerm.trim()) return;
 
     setIsFriendSearchLoading(true);
-    setFriendSearchResult(null);
+    setFoundUser(null);
+    setFriendSearchError(null);
 
-    // Mock search simulation
-    setTimeout(() => {
-        setIsFriendSearchLoading(false);
-        if (friendSearchTerm.toLowerCase() === 'error') {
-            setFriendSearchResult('error');
+    try {
+        // Find user by username
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('username', friendSearchTerm)
+            .single();
+        
+        if (error || !data) {
+            setFriendSearchError(t.userNotFound);
+        } else if (data.id === currentUserId) {
+            setFriendSearchError("You cannot add yourself.");
         } else {
-            setFriendSearchResult('success');
+            // Check if already friends
+            const existing = friends.find(f => f.friendId === data.id);
+            if (existing) {
+                setFriendSearchError(existing.status === 'accepted' ? "Already friends." : "Request pending.");
+            } else {
+                setFoundUser(data as UserProfile);
+            }
         }
-    }, 1000);
+    } catch (e) {
+        setFriendSearchError("Error searching user.");
+    } finally {
+        setIsFriendSearchLoading(false);
+    }
   };
 
-  const confirmAddFriend = () => {
-      // Mock adding friend
-      const newFriend: Friend = {
-          id: `f-${Date.now()}`,
-          username: friendSearchTerm,
-          level: 1,
-          class: ClassType.WARRIOR,
-          status: 'offline',
-          lastSeen: 'Just now'
-      };
-      setFriends(prev => [...prev, newFriend]);
-      setIsAddFriendOpen(false);
-      setFriendSearchTerm('');
-      setFriendSearchResult(null);
+  const sendFriendRequest = async () => {
+      if (!foundUser) return;
+      
+      try {
+          const { error } = await supabase.from('friends').insert({
+              sender_id: currentUserId,
+              receiver_id: foundUser.id,
+              status: 'pending'
+          });
+
+          if (error) throw error;
+          
+          setIsAddFriendOpen(false);
+          setFriendSearchTerm('');
+          setFoundUser(null);
+          fetchFriends(); // Refresh list
+      } catch (e) {
+          console.error(e);
+          setFriendSearchError("Failed to send request.");
+      }
+  };
+
+  const handleAcceptFriend = async (friend: Friend) => {
+      try {
+          await supabase.from('friends').update({ status: 'accepted' }).eq('id', friend.id);
+          fetchFriends();
+      } catch (e) { console.error(e); }
+  };
+
+  const handleRemoveFriend = async (friend: Friend) => {
+      try {
+          await supabase.from('friends').delete().eq('id', friend.id);
+          setSelectedFriend(null);
+          fetchFriends();
+      } catch (e) { console.error(e); }
   };
 
   const handleChallengeFriend = (friend: Friend) => {
-      onStartSharedWorkout(friend.username);
+      onStartSharedWorkout(friend.username, friend.friendId);
       setSelectedFriend(null);
   };
 
@@ -340,31 +473,48 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, lang, onJo
                <div className="p-4 space-y-3">
                   {friends.length === 0 ? (
                      <div className="text-center text-slate-500 py-10">
-                        <p>No friends yet. Add some!</p>
+                        <p>No friends found. Add some to get started!</p>
                      </div>
                   ) : (
                      friends.map(friend => (
                         <div 
                             key={friend.id} 
-                            onClick={() => setSelectedFriend(friend)}
-                            className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between cursor-pointer hover:bg-slate-800 transition-colors"
+                            onClick={() => friend.status === 'accepted' && setSelectedFriend(friend)}
+                            className={`bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between transition-colors ${friend.status === 'accepted' ? 'cursor-pointer hover:bg-slate-800' : ''}`}
                         >
                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 overflow-hidden">
-                                 <img src={`https://picsum.photos/seed/${friend.username}/100/100`} alt="Friend" />
+                              <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center font-bold text-slate-500">
+                                 {friend.username.charAt(0)}
                               </div>
                               <div>
                                  <h4 className="font-bold text-slate-200 text-sm">{friend.username}</h4>
-                                 <div className="text-[10px] text-slate-500">{t.lvl} {friend.level} {friend.class}</div>
+                                 {friend.status === 'pending' ? (
+                                     <div className="text-[10px] text-amber-500 font-bold">{t.pending}...</div>
+                                 ) : (
+                                     <div className="text-[10px] text-slate-500">{t.lvl} {friend.level} {friend.class}</div>
+                                 )}
                               </div>
                            </div>
+                           
+                           {/* Actions */}
                            <div className="flex items-center gap-1.5">
-                              {friend.status === 'online' ? (
-                                 <span className="flex items-center gap-1 text-[10px] text-green-400 font-bold bg-green-900/20 px-2 py-0.5 rounded-full border border-green-900">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Online
-                                 </span>
+                              {friend.status === 'accepted' ? (
+                                 <ChevronRight className="w-5 h-5 text-slate-600" />
                               ) : (
-                                 <span className="text-[10px] text-slate-600 font-bold">{friend.lastSeen}</span>
+                                 friend.isSender ? (
+                                    <button onClick={(e) => { e.stopPropagation(); handleRemoveFriend(friend); }} className="text-[10px] text-slate-500 bg-slate-800 px-2 py-1 rounded hover:bg-red-900/20 hover:text-red-400">
+                                        {t.cancelRequest}
+                                    </button>
+                                 ) : (
+                                     <div className="flex gap-2">
+                                         <button onClick={(e) => { e.stopPropagation(); handleAcceptFriend(friend); }} className="p-1.5 bg-green-600 rounded text-white hover:bg-green-500">
+                                             <Check className="w-4 h-4" />
+                                         </button>
+                                         <button onClick={(e) => { e.stopPropagation(); handleRemoveFriend(friend); }} className="p-1.5 bg-red-600 rounded text-white hover:bg-red-500">
+                                             <X className="w-4 h-4" />
+                                         </button>
+                                     </div>
+                                 )
                               )}
                            </div>
                         </div>
@@ -377,27 +527,29 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, lang, onJo
               <div className="flex-1 flex flex-col h-full">
                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {messages.map((msg) => {
-                      const isMe = msg.senderName === username;
+                      const isMe = msg.user_id === currentUserId;
                       return (
                         <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                            <div className="flex items-end gap-2 max-w-[80%]">
                               {!isMe && (
                                 <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300">
-                                  {msg.senderName.charAt(0)}
+                                  {msg.username.charAt(0)}
                                 </div>
                               )}
                               <div 
-                                className={`p-3 rounded-2xl text-sm ${
+                                className={`p-3 rounded-2xl text-sm break-words ${
                                   isMe 
                                     ? 'bg-amber-600 text-slate-950 rounded-br-none' 
                                     : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700'
                                 }`}
                               >
-                                {!isMe && <div className="text-[10px] font-bold text-amber-500 mb-1">{msg.senderName}</div>}
-                                {msg.text}
+                                {!isMe && <div className="text-[10px] font-bold text-amber-500 mb-1">{msg.username}</div>}
+                                {msg.content}
                               </div>
                            </div>
-                           <span className="text-[10px] text-slate-600 mt-1 px-1">{msg.timestamp}</span>
+                           <span className="text-[10px] text-slate-600 mt-1 px-1">
+                               {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                           </span>
                         </div>
                       );
                     })}
@@ -686,25 +838,25 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, lang, onJo
                     </div>
                 )}
 
-                {!isFriendSearchLoading && friendSearchResult === 'error' && (
+                {!isFriendSearchLoading && friendSearchError && (
                     <div className="bg-red-900/20 border border-red-500/50 p-3 rounded-lg text-red-200 text-sm text-center">
-                        {t.userNotFound}
+                        {friendSearchError}
                     </div>
                 )}
 
-                {!isFriendSearchLoading && friendSearchResult === 'success' && (
+                {!isFriendSearchLoading && foundUser && (
                     <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
                         <div className="flex items-center gap-3 mb-4">
                              <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold text-white">
-                                {friendSearchTerm.charAt(0).toUpperCase()}
+                                {foundUser.username.charAt(0).toUpperCase()}
                              </div>
                              <div>
-                                 <div className="font-bold text-white">{friendSearchTerm}</div>
-                                 <div className="text-xs text-slate-400">Level 1 Warrior</div>
+                                 <div className="font-bold text-white">{foundUser.username}</div>
+                                 <div className="text-xs text-slate-400">Level {foundUser.level} {foundUser.class}</div>
                              </div>
                         </div>
                         <button 
-                            onClick={confirmAddFriend}
+                            onClick={sendFriendRequest}
                             className="w-full py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2"
                         >
                             <UserPlus className="w-4 h-4" /> {t.sendRequest}
@@ -727,12 +879,11 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, lang, onJo
               </button>
 
               <div className="flex flex-col items-center mb-6">
-                 <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-700 flex items-center justify-center mb-3 overflow-hidden">
-                    <img src={`https://picsum.photos/seed/${selectedFriend.username}/200/200`} alt={selectedFriend.username} className="w-full h-full object-cover" />
+                 <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-700 flex items-center justify-center mb-3 overflow-hidden font-bold text-4xl text-slate-600">
+                    {selectedFriend.username.charAt(0)}
                  </div>
                  <h2 className="text-2xl font-bold text-white text-center flex items-center gap-2">
                     {selectedFriend.username}
-                    <span className={`w-3 h-3 rounded-full border-2 border-slate-900 ${selectedFriend.status === 'online' ? 'bg-green-500' : 'bg-slate-500'}`}></span>
                  </h2>
                  <span className="text-slate-400 text-sm">{selectedFriend.class} • {t.lvl} {selectedFriend.level}</span>
                  {selectedFriend.guildName && (
@@ -742,29 +893,20 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, lang, onJo
                  )}
               </div>
 
-              {selectedFriend.stats && (
-                  <div className="grid grid-cols-3 gap-2 mb-6">
-                      <div className="bg-slate-800 p-2 rounded text-center">
-                          <div className="text-[10px] text-slate-500 uppercase font-bold">{t.squat}</div>
-                          <div className="text-white font-mono font-bold">{selectedFriend.stats.squat_1rm}</div>
-                      </div>
-                      <div className="bg-slate-800 p-2 rounded text-center">
-                          <div className="text-[10px] text-slate-500 uppercase font-bold">{t.bench}</div>
-                          <div className="text-white font-mono font-bold">{selectedFriend.stats.bench_1rm}</div>
-                      </div>
-                      <div className="bg-slate-800 p-2 rounded text-center">
-                          <div className="text-[10px] text-slate-500 uppercase font-bold">{t.deadlift}</div>
-                          <div className="text-white font-mono font-bold">{selectedFriend.stats.deadlift_1rm}</div>
-                      </div>
-                  </div>
-              )}
-
-              <button 
-                onClick={() => handleChallengeFriend(selectedFriend)}
-                className="w-full py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-white transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.4)]"
-              >
-                <Swords className="w-5 h-5" /> {t.challenge}
-              </button>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                 <button 
+                    onClick={() => handleChallengeFriend(selectedFriend)}
+                    className="col-span-2 py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-white transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.4)]"
+                  >
+                    <Swords className="w-5 h-5" /> {t.inviteToWorkout}
+                  </button>
+                  <button 
+                    onClick={() => handleRemoveFriend(selectedFriend)}
+                    className="col-span-2 py-2 bg-slate-800 hover:bg-red-900/50 text-slate-400 hover:text-red-400 rounded-xl font-bold text-xs flex items-center justify-center gap-2"
+                  >
+                    <UserX className="w-4 h-4" /> {t.removeFriend}
+                  </button>
+              </div>
             </div>
          </div>
       )}

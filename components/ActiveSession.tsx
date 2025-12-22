@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { WorkoutNode, UserProfile } from '../types';
 import { getWorkoutMotivation, getTechniqueTip } from '../services/geminiService';
-import { ArrowLeft, Timer, CheckCircle, Info, Bot, Trophy, Star, Sparkles } from 'lucide-react';
+import { ArrowLeft, Timer, CheckCircle, Info, Bot, Trophy, Star, Sparkles, Users } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 
 interface Props {
   workout: WorkoutNode;
   user: UserProfile;
   lang: 'en' | 'ru';
+  partnerName?: string | null;
   onComplete: (xp: number, gold: number) => void;
   onExit: () => void;
 }
 
-const ActiveSession: React.FC<Props> = ({ workout, user, lang, onComplete, onExit }) => {
+const ActiveSession: React.FC<Props> = ({ workout, user, lang, partnerName, onComplete, onExit }) => {
   const [motivation, setMotivation] = useState<string>('');
   const [loadingAI, setLoadingAI] = useState(false);
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   const [activeTip, setActiveTip] = useState<string | null>(null);
   const [showVictory, setShowVictory] = useState(false);
+  const [partnerProgress, setPartnerProgress] = useState(0);
 
   const t = TRANSLATIONS[lang];
 
@@ -30,6 +32,23 @@ const ActiveSession: React.FC<Props> = ({ workout, user, lang, onComplete, onExi
     };
     fetchIntro();
   }, []);
+
+  // Simulate Partner Progress
+  useEffect(() => {
+    if (partnerName) {
+        const interval = setInterval(() => {
+            setPartnerProgress(prev => {
+                if (prev >= 100) {
+                    clearInterval(interval);
+                    return 100;
+                }
+                // Random increment
+                return Math.min(100, prev + Math.random() * 5); 
+            });
+        }, 3000);
+        return () => clearInterval(interval);
+    }
+  }, [partnerName]);
 
   const toggleExercise = (id: string) => {
     const next = new Set(completedExercises);
@@ -124,10 +143,20 @@ const ActiveSession: React.FC<Props> = ({ workout, user, lang, onComplete, onExi
         <button onClick={onExit} className="p-2 hover:bg-slate-800 rounded-full text-slate-400">
           <ArrowLeft className="w-6 h-6" />
         </button>
-        <div>
+        <div className="flex-1">
           <h2 className="text-xl font-bold text-white leading-none">{workout.title}</h2>
           <span className="text-xs text-amber-500 font-mono">{t.reward}: {workout.xpReward} {t.xp}</span>
         </div>
+        {partnerName && (
+            <div className="flex flex-col items-end">
+                <div className="flex items-center gap-1 text-xs font-bold text-green-400">
+                    <Users className="w-3 h-3" /> {partnerName}
+                </div>
+                <div className="w-16 h-1.5 bg-slate-800 rounded-full mt-1">
+                    <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{width: `${partnerProgress}%`}}></div>
+                </div>
+            </div>
+        )}
       </div>
 
       {/* AI Oracle Message */}
