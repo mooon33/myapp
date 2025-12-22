@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabaseClient';
 import { Session, User } from '@supabase/supabase-js';
-import { UserProfile, WorkoutNode, Guild, ShopItem, ClassType, AppSettings, Stats, InventoryItem, TrainingPath, WorkoutInvite } from './types';
+import { UserProfile, WorkoutNode, Guild, ShopItem, ClassType, AppSettings, Stats, InventoryItem, TrainingPath, WorkoutInvite, Difficulty } from './types';
 import { MOCK_USER, CAMPAIGN_DATA, MOCK_INVENTORY, MOCK_GUILDS, MOCK_SHOP_ITEMS, TRANSLATIONS } from './constants';
 import CharacterDisplay from './components/CharacterDisplay';
 import WorkoutMap from './components/WorkoutMap';
@@ -23,7 +23,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('map');
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeNode, setActiveNode] = useState<WorkoutNode | null>(null);
-  const [guilds, setGuilds] = useState<Guild[]>(MOCK_GUILDS);
+  const [guilds, setGuilds] = useState<Guild[]>([]); // Initialize empty, will load from DB
   const [currentChapter, setCurrentChapter] = useState(1);
   const [userInventory, setUserInventory] = useState(MOCK_INVENTORY);
   const [settings, setSettings] = useState<AppSettings>({
@@ -44,7 +44,10 @@ const App: React.FC = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
-        fetchUserProfile(session.user);
+        Promise.all([
+          fetchUserProfile(session.user),
+          fetchGuilds()
+        ]).then(() => setIsLoading(false));
         listenForInvites(session.user.id);
       } else {
         setIsLoading(false);
@@ -55,6 +58,7 @@ const App: React.FC = () => {
       setSession(session);
       if (session) {
         fetchUserProfile(session.user);
+        fetchGuilds();
         listenForInvites(session.user.id);
       } else {
         setUser(null);
@@ -64,6 +68,37 @@ const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchGuilds = async () => {
+    try {
+      const { data, error } = await supabase.from('guilds').select('*').order('total_xp', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching guilds:", error);
+        setGuilds(MOCK_GUILDS); // Fallback to mock if DB fails or empty
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const mappedGuilds: Guild[] = data.map(g => ({
+          id: g.id,
+          name: g.name,
+          description: g.description,
+          members: g.members,
+          maxMembers: g.max_members,
+          totalXp: g.total_xp,
+          rank: g.rank,
+          icon: g.icon
+        }));
+        setGuilds(mappedGuilds);
+      } else {
+        setGuilds(MOCK_GUILDS);
+      }
+    } catch (e) {
+      console.error(e);
+      setGuilds(MOCK_GUILDS);
+    }
+  };
 
   const listenForInvites = (userId: string) => {
       // Simulate real-time invite listening via Supabase table 'workout_invites'
@@ -107,6 +142,7 @@ const App: React.FC = () => {
            username: data.username || authUser.email?.split('@')[0] || 'Hero',
            class: data.class as ClassType,
            trainingPath: data.training_path as TrainingPath || TrainingPath.BODYBUILDING,
+           difficulty: data.difficulty as Difficulty || Difficulty.BEGINNER,
            level: data.level,
            current_xp: data.current_xp,
            max_xp: data.max_xp,
@@ -124,7 +160,7 @@ const App: React.FC = () => {
         if (!userProfile.height || !userProfile.weight || userProfile.height === 0) {
             setView('onboarding');
         } else {
-            setView('map');
+            // Keep on current view if not onboarding
         }
 
       } else {
@@ -132,8 +168,6 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Unexpected error:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -145,6 +179,7 @@ const App: React.FC = () => {
       username: username,
       class: ClassType.WARRIOR,
       training_path: TrainingPath.BODYBUILDING,
+      difficulty: Difficulty.BEGINNER,
       level: 1,
       current_xp: 0,
       max_xp: 1000,
@@ -156,20 +191,24 @@ const App: React.FC = () => {
       weight: 0,
     };
 
-    const { error } = await supabase.from('profiles').insert([newProfile]);
+    // Use upsert instead of insert to handle cases where profile might exist but be incomplete
+    const { error } = await supabase.from('profiles').upsert([newProfile]);
     
     if (!error) {
       setUser({ ...newProfile, guildId: null } as any);
       setView('onboarding');
     } else {
       console.error('Error creating profile:', error);
+      // Fallback: If DB fails, we set user but notify them. 
+      // Do NOT set a mock ID for the user, use the real auth ID so chat has a chance to work if DB recovers.
       setUser({ ...MOCK_USER, id: authUser.id, username: username }); 
+      triggerNotification("Database connection issue. Some features may be limited.", 4000);
       setView('map');
     }
     setIsLoading(false);
   };
 
-  const handleCompleteOnboarding = async (data: { gender: 'male' | 'female' | 'other'; height: number; weight: number; class: ClassType }) => {
+  const handleCompleteOnboarding = async (data: { gender: 'male' | 'female' | 'other'; height: number; weight: number; class: ClassType; difficulty: Difficulty }) => {
     if (!user) return;
     setIsLoading(true);
 
@@ -178,7 +217,8 @@ const App: React.FC = () => {
         gender: data.gender,
         height: data.height,
         weight: data.weight,
-        class: data.class
+        class: data.class,
+        difficulty: data.difficulty
     };
 
     setUser(updatedProfile);
@@ -187,7 +227,8 @@ const App: React.FC = () => {
         gender: data.gender,
         height: data.height,
         weight: data.weight,
-        class: data.class
+        class: data.class,
+        difficulty: data.difficulty
     }).eq('id', user.id);
 
     if (error) {
@@ -247,6 +288,15 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateDifficulty = async (newDiff: Difficulty) => {
+     if (!user) return;
+     setUser(prev => prev ? ({ ...prev, difficulty: newDiff }) : null);
+     const { error } = await supabase.from('profiles').update({ difficulty: newDiff }).eq('id', user.id);
+     if (error) {
+        triggerNotification("Failed to update difficulty");
+     } 
+  };
+
   const handleNodeClick = (node: WorkoutNode) => {
     setActiveNode(node);
     setView('workout');
@@ -292,34 +342,59 @@ const App: React.FC = () => {
     setPartnerMode(null);
   };
 
-  const handleJoinGuild = (guildId: string) => {
+  const handleJoinGuild = async (guildId: string) => {
     if (!user) return;
     const targetGuild = guilds.find(g => g.id === guildId);
     if (targetGuild && targetGuild.members >= targetGuild.maxMembers) {
       triggerNotification(t.full + "!");
       return;
     }
+    
+    // Optimistic Update
     setUser(prev => prev ? ({ ...prev, guildId }) : null);
     setGuilds(prev => prev.map(g => {
       if (g.id === guildId) return { ...g, members: g.members + 1 };
       return g;
     }));
     triggerNotification(t.completed + "!");
-    supabase.from('profiles').update({ guild_id: guildId }).eq('id', user.id);
+
+    // DB Update
+    try {
+        await supabase.from('profiles').update({ guild_id: guildId }).eq('id', user.id);
+        if (targetGuild) {
+            await supabase.from('guilds').update({ members: targetGuild.members + 1 }).eq('id', guildId);
+        }
+    } catch (e) {
+        console.error("Error joining guild:", e);
+    }
   };
 
-  const handleLeaveGuild = () => {
+  const handleLeaveGuild = async () => {
     if (!user || !user.guildId) return;
+    
+    const oldGuildId = user.guildId;
+    const oldGuild = guilds.find(g => g.id === oldGuildId);
+
+    // Optimistic Update
     setGuilds(prev => prev.map(g => {
       if (g.id === user.guildId) return { ...g, members: Math.max(0, g.members - 1) };
       return g;
     }));
     setUser(prev => prev ? ({ ...prev, guildId: null }) : null);
     triggerNotification(t.completed + ".");
-    supabase.from('profiles').update({ guild_id: null }).eq('id', user.id);
+
+    // DB Update
+    try {
+        await supabase.from('profiles').update({ guild_id: null }).eq('id', user.id);
+        if (oldGuild) {
+            await supabase.from('guilds').update({ members: Math.max(0, oldGuild.members - 1) }).eq('id', oldGuildId);
+        }
+    } catch (e) {
+        console.error("Error leaving guild:", e);
+    }
   };
 
-  const handleCreateGuild = (data: { name: string; description: string; icon: Guild['icon'] }) => {
+  const handleCreateGuild = async (data: { name: string; description: string; icon: Guild['icon'] }) => {
     if (!user) return;
     const newGuildId = `g-${Date.now()}`;
     const newGuild: Guild = {
@@ -332,9 +407,34 @@ const App: React.FC = () => {
       totalXp: 0,
       rank: guilds.length + 1,
     };
+    
+    // Optimistic Update
     setGuilds(prev => [...prev, newGuild]);
     setUser(prev => prev ? ({ ...prev, guildId: newGuildId }) : null);
     triggerNotification(`${t.guild} "${data.name}" !`);
+
+    // DB Insert
+    try {
+        const { error } = await supabase.from('guilds').insert({
+            id: newGuildId,
+            name: data.name,
+            description: data.description,
+            icon: data.icon,
+            members: 1,
+            max_members: 30,
+            total_xp: 0,
+            rank: guilds.length + 1
+        });
+        
+        if (error) {
+            console.error("Error creating guild DB:", error);
+            return;
+        }
+
+        await supabase.from('profiles').update({ guild_id: newGuildId }).eq('id', user.id);
+    } catch (e) {
+        console.error(e);
+    }
   };
 
   const handleBuyItem = (item: ShopItem) => {
@@ -451,6 +551,12 @@ const App: React.FC = () => {
     { path: TrainingPath.STRETCHING, icon: Activity, name: t.stretching },
   ];
 
+  const difficultyLevels = [
+     { level: Difficulty.BEGINNER, label: t.beginner },
+     { level: Difficulty.INTERMEDIATE, label: t.intermediate },
+     { level: Difficulty.ADVANCED, label: t.advanced },
+  ];
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex justify-center">
       <div className="w-full max-w-md bg-slate-950 min-h-screen shadow-2xl relative flex flex-col">
@@ -529,64 +635,84 @@ const App: React.FC = () => {
                 <div className="p-4">
                   <CharacterDisplay user={user} lang={settings.language} onUpdateClass={handleUpdateClass} onUpdateStats={handleUpdateStats} />
                   
-                  <div className="mt-8">
-                    {/* Training Path Selector */}
-                    <div className="mb-8">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-1">{t.selectPath}</h3>
-                        <div className="overflow-x-auto pb-4 -mx-4 px-4 no-scrollbar flex gap-4 snap-x">
-                            {trainingPaths.map((p) => {
-                                const Icon = p.icon;
-                                const isActive = user.trainingPath === p.path;
-                                return (
-                                    <button
-                                        key={p.path}
-                                        onClick={() => handleUpdateTrainingPath(p.path)}
-                                        className={`relative flex-shrink-0 w-32 h-32 rounded-2xl border-2 flex flex-col items-center justify-center gap-3 transition-all duration-300 snap-center group overflow-hidden ${
-                                            isActive 
-                                            ? 'bg-gradient-to-br from-amber-900/40 to-slate-900 border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] scale-105' 
-                                            : 'bg-slate-900 border-slate-800 hover:border-slate-600 hover:bg-slate-800'
-                                        }`}
-                                    >
-                                        {isActive && <div className="absolute inset-0 bg-amber-500/10 animate-pulse"></div>}
-                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border transition-colors ${
-                                            isActive 
-                                                ? 'bg-amber-500 text-slate-900 border-amber-400 shadow-lg' 
-                                                : 'bg-slate-800 text-slate-500 border-slate-700 group-hover:border-slate-500 group-hover:text-slate-300'
-                                        }`}>
-                                            <Icon className={`w-6 h-6 ${isActive ? 'animate-bounce' : ''}`} />
-                                        </div>
-                                        <span className={`text-[10px] font-black uppercase tracking-wider text-center px-2 leading-tight ${
-                                            isActive ? 'text-amber-400' : 'text-slate-500 group-hover:text-slate-300'
-                                        }`}>
-                                            {p.name}
-                                        </span>
-                                    </button>
-                                );
-                            })}
+                  <div className="mt-6 relative z-10">
+                    {/* Control Panel Background */}
+                    <div className="bg-slate-900/80 backdrop-blur-md rounded-2xl p-4 border border-slate-700 shadow-xl mb-6">
+                        
+                        {/* 1. Training Path Selector (Grid Layout) */}
+                        <div className="mb-4">
+                            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 pl-1">{t.selectPath}</h3>
+                            <div className="grid grid-cols-3 gap-2">
+                                {trainingPaths.map((p) => {
+                                    const Icon = p.icon;
+                                    const isActive = user.trainingPath === p.path;
+                                    return (
+                                        <button
+                                            key={p.path}
+                                            onClick={() => handleUpdateTrainingPath(p.path)}
+                                            className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all ${
+                                                isActive 
+                                                ? 'bg-gradient-to-b from-amber-600 to-amber-700 border-amber-500 shadow-lg transform scale-105 z-10' 
+                                                : 'bg-slate-800 border-slate-700 hover:bg-slate-750 hover:border-slate-600'
+                                            }`}
+                                        >
+                                            <Icon className={`w-5 h-5 mb-1 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                                            <span className={`text-[9px] font-bold uppercase text-center leading-tight ${
+                                                isActive ? 'text-white' : 'text-slate-500'
+                                            }`}>
+                                                {p.name.split(' ')[0]}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="flex items-center justify-between mb-4 px-2">
-                      <button 
-                        onClick={() => setCurrentChapter(prev => Math.max(1, prev - 1))}
-                        disabled={currentChapter === 1}
-                        className="p-1 rounded hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent"
-                      >
-                        <ChevronLeft className="w-6 h-6 text-slate-400" />
-                      </button>
-                      
-                      <div className="text-center">
-                        <h3 className="text-slate-400 uppercase tracking-widest text-xs font-bold">{t.campaign}</h3>
-                        <h2 className="text-xl font-bold text-white">{t.chapter} {currentChapter}</h2>
-                      </div>
+                        {/* 2. Difficulty Selector (Segmented Control) */}
+                        <div className="mb-4">
+                             <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+                                {difficultyLevels.map((lvl) => {
+                                   const isActive = user.difficulty === lvl.level;
+                                   return (
+                                      <button 
+                                         key={lvl.level}
+                                         onClick={() => handleUpdateDifficulty(lvl.level)}
+                                         className={`flex-1 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all ${
+                                            isActive 
+                                            ? 'bg-slate-800 text-amber-500 shadow-sm border border-slate-700' 
+                                            : 'text-slate-500 hover:text-slate-300'
+                                         }`}
+                                      >
+                                         {lvl.label.split(' ')[0]} 
+                                      </button>
+                                   );
+                                })}
+                             </div>
+                        </div>
 
-                      <button 
-                        onClick={() => setCurrentChapter(prev => Math.min(maxChapters, prev + 1))}
-                        disabled={currentChapter === maxChapters}
-                        className="p-1 rounded hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent"
-                      >
-                        <ChevronRight className="w-6 h-6 text-slate-400" />
-                      </button>
+                        {/* 3. Chapter Selector (Stylized Bar) */}
+                        <div className="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg p-1">
+                            <button 
+                                onClick={() => setCurrentChapter(prev => Math.max(1, prev - 1))}
+                                disabled={currentChapter === 1}
+                                className="p-2 rounded hover:bg-slate-800 disabled:opacity-30 text-slate-400 hover:text-white transition-colors"
+                            >
+                                <ChevronLeft className="w-5 h-5" />
+                            </button>
+                            
+                            <div className="flex flex-col items-center">
+                                <span className="text-[9px] text-amber-600 uppercase font-black tracking-[0.2em]">{t.campaign}</span>
+                                <span className="text-sm font-bold text-white font-mono">{t.chapter} {currentChapter}</span>
+                            </div>
+
+                            <button 
+                                onClick={() => setCurrentChapter(prev => Math.min(maxChapters, prev + 1))}
+                                disabled={currentChapter === maxChapters}
+                                className="p-2 rounded hover:bg-slate-800 disabled:opacity-30 text-slate-400 hover:text-white transition-colors"
+                            >
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
 
                     <WorkoutMap nodes={currentNodes} onNodeClick={handleNodeClick} />

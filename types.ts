@@ -13,6 +13,12 @@ export enum TrainingPath {
   STRETCHING = 'Yoga & Stretching'
 }
 
+export enum Difficulty {
+  BEGINNER = 'Beginner',
+  INTERMEDIATE = 'Intermediate',
+  ADVANCED = 'Advanced'
+}
+
 export interface Attributes {
   str: number; // Strength
   sta: number; // Endurance/Stamina
@@ -45,6 +51,7 @@ export interface UserProfile {
   username: string;
   class: ClassType;
   trainingPath?: TrainingPath;
+  difficulty?: Difficulty;
   level: number;
   current_xp: number;
   max_xp: number;

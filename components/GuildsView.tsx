@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Shield, Zap, Sword, Crown, Plus, Search, LogOut, LogIn, X, Send, MessageSquare, AlertCircle, UserPlus, Check, Trash2, UserX, Swords, ChevronRight } from 'lucide-react';
+import { Users, Shield, Zap, Sword, Crown, Plus, Search, LogOut, LogIn, X, Send, MessageSquare, AlertCircle, UserPlus, Check, Trash2, UserX, Swords, ChevronRight, PenTool, DoorOpen, Loader2, Trophy } from 'lucide-react';
 import { Guild, ChatMessage, Friend, ClassType, UserProfile } from '../types';
 import { TRANSLATIONS } from '../constants';
 import { supabase } from '../lib/supabaseClient';
@@ -28,6 +28,10 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
   const [selectedGuild, setSelectedGuild] = useState<Guild | null>(null);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   
+  // Guild Members State
+  const [guildMembers, setGuildMembers] = useState<UserProfile[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+
   // Friends State
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
@@ -48,6 +52,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
   // Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [chatError, setChatError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const t = TRANSLATIONS[lang];
@@ -61,13 +66,11 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
 
   const fetchFriends = async () => {
     try {
-      // Fetch friendships where user is sender
       const { data: sentRequests, error: sentError } = await supabase
         .from('friends')
         .select('*, friend:receiver_id(username, level, class)')
         .eq('sender_id', currentUserId);
 
-      // Fetch friendships where user is receiver
       const { data: receivedRequests, error: receivedError } = await supabase
         .from('friends')
         .select('*, friend:sender_id(username, level, class)')
@@ -113,7 +116,6 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
   useEffect(() => {
     if (activeTab !== 'chat' || !userGuildId) return;
 
-    // Initial Fetch
     const fetchMessages = async () => {
         const { data, error } = await supabase
             .from('guild_messages')
@@ -129,14 +131,17 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
 
     fetchMessages();
 
-    // Realtime Subscription
     const channel = supabase
       .channel('public:guild_messages')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'guild_messages', filter: `guild_id=eq.${userGuildId}` },
         (payload) => {
-          setMessages((current) => [...current, payload.new as ChatMessage]);
+          setMessages((current) => {
+             // Avoid duplicates from optimistic updates
+             if (current.some(m => m.id === payload.new.id)) return current;
+             return [...current, payload.new as ChatMessage];
+          });
         }
       )
       .subscribe();
@@ -146,7 +151,6 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
     };
   }, [activeTab, userGuildId]);
 
-  // Scroll to bottom of chat
   useEffect(() => {
     if (activeTab === 'chat') {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -183,7 +187,20 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
     if (!newMessage.trim() || !userGuildId) return;
 
     const text = newMessage.trim();
-    setNewMessage(''); // Optimistic clear
+    const tempId = `temp-${Date.now()}`;
+    setNewMessage('');
+    setChatError(null);
+
+    // Optimistic Update
+    const optimisticMsg: ChatMessage = {
+        id: tempId,
+        guild_id: userGuildId,
+        user_id: currentUserId,
+        username: username,
+        content: text,
+        created_at: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
 
     try {
         const { error } = await supabase.from('guild_messages').insert({
@@ -195,10 +212,13 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
 
         if (error) {
             console.error("Error sending message:", error);
-            // In a real app, restore text or show error toast
+            setMessages(prev => prev.filter(m => m.id !== tempId)); // Rollback
+            setChatError("Failed to send. Please try refreshing.");
         }
     } catch (e) {
         console.error("Network error:", e);
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+        setChatError("Network error.");
     }
   };
 
@@ -223,8 +243,37 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
     }
   };
 
-  const handleGuildClick = (guild: Guild) => {
+  const handleGuildClick = async (guild: Guild) => {
      setSelectedGuild(guild);
+     setIsLoadingMembers(true);
+     setGuildMembers([]);
+
+     try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, username, level, class, current_xp') // Fetch specific fields
+            .eq('guild_id', guild.id)
+            .order('level', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+            setGuildMembers(data as UserProfile[]);
+        } else {
+             // Fallback for mocks
+             if (guild.id.startsWith('g-')) {
+                 const mockMembers: any[] = Array.from({ length: Math.min(5, guild.members) }).map((_, i) => ({
+                    id: `mock-${i}`,
+                    username: `Member ${i + 1}`,
+                    level: Math.floor(Math.random() * 20) + 1,
+                    class: i % 3 === 0 ? ClassType.WARRIOR : i % 3 === 1 ? ClassType.SCOUT : ClassType.MONK,
+                 }));
+                 setGuildMembers(mockMembers);
+            }
+        }
+     } catch (e) {
+         console.error("Error fetching members:", e);
+     } finally {
+         setIsLoadingMembers(false);
+     }
   };
 
   const handleSearchFriend = async (e: React.FormEvent) => {
@@ -236,7 +285,6 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
     setFriendSearchError(null);
 
     try {
-        // Find user by username
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
@@ -248,7 +296,6 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
         } else if (data.id === currentUserId) {
             setFriendSearchError("You cannot add yourself.");
         } else {
-            // Check if already friends
             const existing = friends.find(f => f.friendId === data.id);
             if (existing) {
                 setFriendSearchError(existing.status === 'accepted' ? "Already friends." : "Request pending.");
@@ -265,20 +312,17 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
 
   const sendFriendRequest = async () => {
       if (!foundUser) return;
-      
       try {
           const { error } = await supabase.from('friends').insert({
               sender_id: currentUserId,
               receiver_id: foundUser.id,
               status: 'pending'
           });
-
           if (error) throw error;
-          
           setIsAddFriendOpen(false);
           setFriendSearchTerm('');
           setFoundUser(null);
-          fetchFriends(); // Refresh list
+          fetchFriends();
       } catch (e) {
           console.error(e);
           setFriendSearchError("Failed to send request.");
@@ -313,10 +357,10 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
             <Users className="w-6 h-6 text-amber-500" /> {t.socialHub}
           </h2>
-          {!userGuildId && !isCreating && activeTab !== 'friends' && (
+          {!userGuildId && activeTab !== 'friends' && (
              <button 
                onClick={() => setIsCreating(true)}
-               className="bg-amber-600 hover:bg-amber-500 text-slate-950 p-2 rounded-lg font-bold text-xs flex items-center gap-1"
+               className="bg-amber-600 hover:bg-amber-500 text-slate-950 p-2 rounded-lg font-bold text-xs flex items-center gap-1 shadow-lg shadow-amber-900/20"
              >
               <Plus className="w-4 h-4" /> {t.guild}
             </button>
@@ -324,7 +368,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
           {activeTab === 'friends' && (
              <button 
                onClick={() => setIsAddFriendOpen(true)}
-               className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-lg font-bold text-xs flex items-center gap-1"
+               className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-lg font-bold text-xs flex items-center gap-1 shadow-lg shadow-blue-900/20"
              >
               <UserPlus className="w-4 h-4" /> {t.addFriend}
             </button>
@@ -332,205 +376,115 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
         </div>
 
         {/* Tabs */}
-        {!isCreating && (
-          <div className="flex p-1 bg-slate-800 rounded-lg overflow-x-auto no-scrollbar">
-             {userGuildId && (
-              <button
+        <div className="flex p-1 bg-slate-800 rounded-lg overflow-x-auto no-scrollbar">
+            {userGuildId && (
+            <button
                 onClick={() => setActiveTab('chat')}
                 className={`flex-1 py-2 px-3 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 whitespace-nowrap ${
-                  activeTab === 'chat' 
+                activeTab === 'chat' 
                     ? 'bg-slate-700 text-white shadow' 
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
-              >
+            >
                 <MessageSquare className="w-4 h-4" /> {t.chat}
-              </button>
+            </button>
             )}
             <button
-              onClick={() => setActiveTab('friends')}
-              className={`flex-1 py-2 px-3 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
+            onClick={() => setActiveTab('friends')}
+            className={`flex-1 py-2 px-3 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
                 activeTab === 'friends' 
-                  ? 'bg-slate-700 text-white shadow' 
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
+                ? 'bg-slate-700 text-white shadow' 
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
             >
-              {t.friends}
+            {t.friends}
             </button>
             <button
-              onClick={() => setActiveTab('find')}
-              className={`flex-1 py-2 px-3 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
+            onClick={() => setActiveTab('find')}
+            className={`flex-1 py-2 px-3 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
                 activeTab === 'find' 
-                  ? 'bg-slate-700 text-white shadow' 
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
+                ? 'bg-slate-700 text-white shadow' 
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
             >
-              {t.guilds}
+            {t.guilds}
             </button>
             <button
-              onClick={() => setActiveTab('rankings')}
-              className={`flex-1 py-2 px-3 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
+            onClick={() => setActiveTab('rankings')}
+            className={`flex-1 py-2 px-3 text-sm font-bold rounded-md transition-all whitespace-nowrap ${
                 activeTab === 'rankings' 
-                  ? 'bg-slate-700 text-white shadow' 
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
+                ? 'bg-slate-700 text-white shadow' 
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
             >
-              {t.rankings}
+            {t.rankings}
             </button>
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto bg-slate-950 flex flex-col">
-        {/* CREATE GUILD FORM */}
-        {isCreating ? (
-          <div className="p-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-white">{t.createGuild}</h3>
-              <button onClick={() => setIsCreating(false)} className="text-slate-400 hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitCreate} className="space-y-6">
-              {/* Icon Selection */}
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Guild Banner</label>
-                <div className="flex gap-4">
-                  {(['shield', 'sword', 'crown', 'zap'] as const).map((icon) => (
-                    <button
-                      key={icon}
-                      type="button"
-                      onClick={() => setCreateForm(prev => ({ ...prev, icon }))}
-                      className={`w-14 h-14 rounded-xl flex items-center justify-center border-2 transition-all ${
-                        createForm.icon === icon 
-                          ? 'bg-slate-800 border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]' 
-                          : 'bg-slate-900 border-slate-700 hover:border-slate-500'
-                      }`}
-                    >
-                      {getIcon(icon, "w-8 h-8")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Name Input */}
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.guildName} <span className="text-red-500">*</span></label>
-                <input 
-                  type="text"
-                  required
-                  value={createForm.name}
-                  onChange={e => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                  className={`w-full bg-slate-900 border ${formErrors.name ? 'border-red-500' : 'border-slate-700'} rounded-lg p-3 text-white focus:border-amber-500 focus:outline-none`}
-                  placeholder="e.g. Iron Titans"
-                />
-                {formErrors.name && (
-                  <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {formErrors.name}
-                  </p>
-                )}
-              </div>
-
-              {/* Description Input */}
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.manifesto} <span className="text-red-500">*</span></label>
-                <textarea 
-                  required
-                  value={createForm.description}
-                  onChange={e => setCreateForm(prev => ({ ...prev, description: e.target.value }))}
-                  className={`w-full bg-slate-900 border ${formErrors.description ? 'border-red-500' : 'border-slate-700'} rounded-lg p-3 text-white h-24 focus:border-amber-500 focus:outline-none resize-none`}
-                  placeholder="What is your guild about?"
-                />
-                {formErrors.description && (
-                  <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {formErrors.description}
-                  </p>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsCreating(false)}
-                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold"
-                >
-                  {t.cancel}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-slate-950 rounded-xl font-bold shadow-[0_0_15px_rgba(245,158,11,0.4)]"
-                >
-                  {t.createGuild}
-                </button>
-              </div>
-            </form>
-          </div>
-        ) : (
-          <>
-            {activeTab === 'friends' && (
-               <div className="p-4 space-y-3">
+          {activeTab === 'friends' && (
+              <div className="p-4 space-y-3">
                   {friends.length === 0 ? (
-                     <div className="text-center text-slate-500 py-10">
+                      <div className="text-center text-slate-500 py-10">
                         <p>No friends found. Add some to get started!</p>
-                     </div>
+                      </div>
                   ) : (
-                     friends.map(friend => (
+                      friends.map(friend => (
                         <div 
                             key={friend.id} 
                             onClick={() => friend.status === 'accepted' && setSelectedFriend(friend)}
                             className={`bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between transition-colors ${friend.status === 'accepted' ? 'cursor-pointer hover:bg-slate-800' : ''}`}
                         >
-                           <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center font-bold text-slate-500">
-                                 {friend.username.charAt(0)}
+                                  {friend.username.charAt(0)}
                               </div>
                               <div>
-                                 <h4 className="font-bold text-slate-200 text-sm">{friend.username}</h4>
-                                 {friend.status === 'pending' ? (
-                                     <div className="text-[10px] text-amber-500 font-bold">{t.pending}...</div>
-                                 ) : (
-                                     <div className="text-[10px] text-slate-500">{t.lvl} {friend.level} {friend.class}</div>
-                                 )}
+                                  <h4 className="font-bold text-slate-200 text-sm">{friend.username}</h4>
+                                  {friend.status === 'pending' ? (
+                                      <div className="text-[10px] text-amber-500 font-bold">{t.pending}...</div>
+                                  ) : (
+                                      <div className="text-[10px] text-slate-500">{t.lvl} {friend.level} {friend.class}</div>
+                                  )}
                               </div>
-                           </div>
-                           
-                           {/* Actions */}
-                           <div className="flex items-center gap-1.5">
+                            </div>
+                            
+                            <div className="flex items-center gap-1.5">
                               {friend.status === 'accepted' ? (
-                                 <ChevronRight className="w-5 h-5 text-slate-600" />
+                                  <ChevronRight className="w-5 h-5 text-slate-600" />
                               ) : (
-                                 friend.isSender ? (
+                                  friend.isSender ? (
                                     <button onClick={(e) => { e.stopPropagation(); handleRemoveFriend(friend); }} className="text-[10px] text-slate-500 bg-slate-800 px-2 py-1 rounded hover:bg-red-900/20 hover:text-red-400">
                                         {t.cancelRequest}
                                     </button>
-                                 ) : (
-                                     <div className="flex gap-2">
-                                         <button onClick={(e) => { e.stopPropagation(); handleAcceptFriend(friend); }} className="p-1.5 bg-green-600 rounded text-white hover:bg-green-500">
-                                             <Check className="w-4 h-4" />
-                                         </button>
-                                         <button onClick={(e) => { e.stopPropagation(); handleRemoveFriend(friend); }} className="p-1.5 bg-red-600 rounded text-white hover:bg-red-500">
-                                             <X className="w-4 h-4" />
-                                         </button>
-                                     </div>
-                                 )
+                                  ) : (
+                                      <div className="flex gap-2">
+                                          <button onClick={(e) => { e.stopPropagation(); handleAcceptFriend(friend); }} className="p-1.5 bg-green-600 rounded text-white hover:bg-green-500">
+                                              <Check className="w-4 h-4" />
+                                          </button>
+                                          <button onClick={(e) => { e.stopPropagation(); handleRemoveFriend(friend); }} className="p-1.5 bg-red-600 rounded text-white hover:bg-red-500">
+                                              <X className="w-4 h-4" />
+                                          </button>
+                                      </div>
+                                  )
                               )}
-                           </div>
+                            </div>
                         </div>
-                     ))
+                      ))
                   )}
-               </div>
-            )}
+              </div>
+          )}
 
-            {activeTab === 'chat' && userGuildId && (
+          {activeTab === 'chat' && userGuildId && (
               <div className="flex-1 flex flex-col h-full">
-                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {messages.map((msg) => {
                       const isMe = msg.user_id === currentUserId;
                       return (
-                        <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                           <div className="flex items-end gap-2 max-w-[80%]">
+                        <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${msg.id.startsWith('temp-') ? 'opacity-50' : ''}`}>
+                            <div className="flex items-end gap-2 max-w-[80%]">
                               {!isMe && (
                                 <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300">
                                   {msg.username.charAt(0)}
@@ -546,39 +500,42 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
                                 {!isMe && <div className="text-[10px] font-bold text-amber-500 mb-1">{msg.username}</div>}
                                 {msg.content}
                               </div>
-                           </div>
-                           <span className="text-[10px] text-slate-600 mt-1 px-1">
-                               {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                           </span>
+                            </div>
+                            <span className="text-[10px] text-slate-600 mt-1 px-1">
+                                {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </span>
                         </div>
                       );
                     })}
+                    {chatError && (
+                        <div className="text-center text-red-500 text-xs py-2 bg-red-900/10 rounded border border-red-900/30">
+                            {chatError}
+                        </div>
+                    )}
                     <div ref={chatEndRef} />
-                 </div>
-                 
-                 {/* Chat Input */}
-                 <form onSubmit={handleSendMessage} className="p-3 bg-slate-900 border-t border-slate-800 flex gap-2">
-                   <input 
+                  </div>
+                  
+                  <form onSubmit={handleSendMessage} className="p-3 bg-slate-900 border-t border-slate-800 flex gap-2">
+                    <input 
                       type="text" 
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       placeholder={t.messagePlaceholder}
                       className="flex-1 bg-slate-950 border border-slate-700 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
-                   />
-                   <button 
+                    />
+                    <button 
                       type="submit"
                       disabled={!newMessage.trim()}
                       className="p-2 bg-amber-600 text-slate-900 rounded-full hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                   >
-                     <Send className="w-5 h-5" />
-                   </button>
-                 </form>
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
+                  </form>
               </div>
-            )}
+          )}
 
-            {activeTab === 'find' && (
+          {activeTab === 'find' && (
               <div className="space-y-4 p-4">
-                {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input 
@@ -590,12 +547,9 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
                   />
                 </div>
 
-                {/* List */}
                 {filteredGuilds.map(guild => {
                   const isMyGuild = userGuildId === guild.id;
                   const isFull = guild.members >= guild.maxMembers;
-                  
-                  // Determine button state
                   let button = null;
 
                   if (isMyGuild) {
@@ -607,7 +561,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
                         }}
                         className="px-3 py-1.5 border border-red-900 bg-red-900/20 text-red-400 rounded-lg text-xs font-bold hover:bg-red-900/40 transition-colors flex items-center gap-1 shrink-0"
                       >
-                        <LogOut className="w-3 h-3" /> {t.leave}
+                        <DoorOpen className="w-3 h-3" /> {t.leave}
                       </button>
                     );
                   } else if (!userGuildId && !isFull) {
@@ -629,7 +583,6 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
                       </span>
                     );
                   } else {
-                     // User is in another guild
                      button = (
                       <span className="px-3 py-1.5 text-slate-600 text-xs font-bold cursor-not-allowed shrink-0">
                         {t.join}
@@ -668,9 +621,9 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
                   );
                 })}
               </div>
-            )}
+          )}
 
-            {activeTab === 'rankings' && (
+          {activeTab === 'rankings' && (
               <div className="space-y-2 p-4">
                 <div className="flex justify-between text-xs text-slate-500 px-2 font-mono uppercase">
                    <span>Rank</span>
@@ -708,10 +661,115 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
                   );
                 })}
               </div>
-            )}
-          </>
-        )}
+          )}
       </div>
+
+      {/* CREATE GUILD MODAL */}
+      {isCreating && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-slate-900 border border-slate-600 p-6 rounded-2xl w-full max-w-sm shadow-2xl relative">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Plus className="w-6 h-6 text-amber-500" /> {t.createGuild}
+                </h3>
+                <button onClick={() => setIsCreating(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitCreate} className="space-y-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Guild Banner</label>
+                  <div className="flex gap-4 justify-center">
+                    {(['shield', 'sword', 'crown', 'zap'] as const).map((icon) => (
+                      <button
+                        key={icon}
+                        type="button"
+                        onClick={() => setCreateForm(prev => ({ ...prev, icon }))}
+                        className={`w-14 h-14 rounded-xl flex items-center justify-center border-2 transition-all transform hover:scale-105 ${
+                          createForm.icon === icon 
+                            ? 'bg-slate-800 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)] scale-105' 
+                            : 'bg-slate-900 border-slate-700 hover:border-slate-500 opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        {getIcon(icon, "w-8 h-8")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between">
+                      <span>{t.guildName} <span className="text-red-500">*</span></span>
+                      <span className={`text-[10px] ${createForm.name.length >= 3 ? 'text-green-500' : 'text-slate-600'}`}>
+                          {createForm.name.length} / 20
+                      </span>
+                  </label>
+                  <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                          <Shield className="w-4 h-4" />
+                      </div>
+                      <input 
+                        type="text"
+                        required
+                        value={createForm.name}
+                        onChange={e => setCreateForm(prev => ({ ...prev, name: e.target.value.slice(0, 20) }))}
+                        className={`w-full bg-slate-950 border ${formErrors.name ? 'border-red-500 focus:border-red-500' : 'border-slate-700 focus:border-amber-500'} rounded-lg py-3 pl-10 pr-3 text-white focus:outline-none transition-all`}
+                        placeholder="e.g. Iron Titans"
+                      />
+                  </div>
+                  {formErrors.name && (
+                    <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1 animate-in slide-in-from-left-2">
+                      <AlertCircle className="w-3 h-3" /> {formErrors.name}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between">
+                      <span>{t.manifesto} <span className="text-red-500">*</span></span>
+                      <span className={`text-[10px] ${createForm.description.length >= 10 ? 'text-green-500' : 'text-slate-600'}`}>
+                          {createForm.description.length} / 100
+                      </span>
+                  </label>
+                  <div className="relative">
+                      <div className="absolute left-3 top-3 text-slate-500">
+                          <PenTool className="w-4 h-4" />
+                      </div>
+                      <textarea 
+                        required
+                        value={createForm.description}
+                        onChange={e => setCreateForm(prev => ({ ...prev, description: e.target.value.slice(0, 100) }))}
+                        className={`w-full bg-slate-950 border ${formErrors.description ? 'border-red-500 focus:border-red-500' : 'border-slate-700 focus:border-amber-500'} rounded-lg py-3 pl-10 pr-3 text-white h-24 focus:outline-none resize-none transition-all`}
+                        placeholder="What is your guild about?"
+                      />
+                  </div>
+                  {formErrors.description && (
+                    <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1 animate-in slide-in-from-left-2">
+                      <AlertCircle className="w-3 h-3" /> {formErrors.description}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreating(false)}
+                    className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-colors"
+                  >
+                    {t.cancel}
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-slate-950 rounded-xl font-bold shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-all hover:scale-105"
+                  >
+                    {t.createGuild}
+                  </button>
+                </div>
+              </form>
+           </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       {confirmation && (
@@ -757,7 +815,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
       {/* View Guild Details Modal */}
       {selectedGuild && (
          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-600 p-6 rounded-2xl w-full max-w-sm shadow-2xl relative">
+            <div className="bg-slate-900 border border-slate-600 p-6 rounded-2xl w-full max-w-sm shadow-2xl relative max-h-[90vh] flex flex-col">
               <button 
                 onClick={() => setSelectedGuild(null)}
                 className="absolute top-4 right-4 text-slate-400 hover:text-white"
@@ -765,7 +823,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
                 <X className="w-6 h-6" />
               </button>
 
-              <div className="flex flex-col items-center mb-6">
+              <div className="flex flex-col items-center mb-6 shrink-0">
                  <div className="w-20 h-20 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center mb-4">
                     {getIcon(selectedGuild.icon, "w-10 h-10")}
                  </div>
@@ -773,12 +831,12 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
                  <span className="text-amber-500 font-mono font-bold mt-1 text-sm">Rank #{selectedGuild.rank}</span>
               </div>
 
-              <div className="bg-slate-950/50 rounded-lg p-4 mb-6 border border-slate-800">
+              <div className="bg-slate-950/50 rounded-lg p-4 mb-6 border border-slate-800 shrink-0">
                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t.manifesto}</h4>
                  <p className="text-slate-300 text-sm leading-relaxed italic">"{selectedGuild.description}"</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-2 gap-4 mb-6 shrink-0">
                  <div className="bg-slate-800 rounded-lg p-3 text-center">
                     <div className="text-xs text-slate-400 uppercase">{t.members}</div>
                     <div className="font-bold text-xl text-white">{selectedGuild.members} / {selectedGuild.maxMembers}</div>
@@ -788,10 +846,43 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
                     <div className="font-bold text-xl text-amber-500">{(selectedGuild.totalXp / 1000).toFixed(1)}k</div>
                  </div>
               </div>
+              
+              {/* Guild Members List */}
+              <div className="flex-1 min-h-0 flex flex-col mb-6">
+                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    {t.members}
+                    {isLoadingMembers && <Loader2 className="w-3 h-3 animate-spin" />}
+                 </h4>
+                 
+                 <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-y-auto min-h-[100px] max-h-[150px] p-2 space-y-1">
+                    {!isLoadingMembers && guildMembers.length === 0 ? (
+                        <div className="text-center text-slate-600 text-xs py-4">No members info available</div>
+                    ) : (
+                        guildMembers.map((member, index) => (
+                           <div key={member.id} className="flex items-center gap-3 p-2 rounded hover:bg-slate-900 transition-colors">
+                              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-700">
+                                 {member.username.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0 flex flex-col">
+                                 <div className="flex items-center gap-2">
+                                     <span className="text-sm font-bold text-slate-300 truncate">{member.username}</span>
+                                     {index === 0 && <Crown className="w-3 h-3 text-yellow-500" />}
+                                 </div>
+                                 <div className="text-[10px] text-slate-500 capitalize">{member.class}</div>
+                              </div>
+                              <div className="text-right">
+                                  <div className="text-[10px] text-amber-500 font-mono font-bold">Lvl {member.level}</div>
+                                  <div className="text-[9px] text-slate-600 font-mono">{(member.current_xp / 1000).toFixed(1)}k XP</div>
+                              </div>
+                           </div>
+                        ))
+                    )}
+                 </div>
+              </div>
 
               <button 
                 onClick={() => setSelectedGuild(null)}
-                className="w-full py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-slate-300 transition-colors"
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-slate-300 transition-colors shrink-0"
               >
                 {t.gotIt}
               </button>

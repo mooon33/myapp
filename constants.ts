@@ -1,5 +1,5 @@
 
-import { UserProfile, ClassType, WorkoutNode, InventoryItem, Guild, ChatMessage, ShopItem, Friend, SpriteMilestone, TrainingPath } from './types';
+import { UserProfile, ClassType, WorkoutNode, InventoryItem, Guild, ChatMessage, ShopItem, Friend, SpriteMilestone, TrainingPath, Difficulty } from './types';
 
 export const TRANSLATIONS = {
   en: {
@@ -11,13 +11,17 @@ export const TRANSLATIONS = {
     hero: 'Hero',
     
     // Auth & Onboarding
-    step3: 'Training Path',
-    selectPath: 'Select Your Discipline',
+    step3: 'Combat Readiness',
+    selectPath: 'Discipline',
     bodybuilding: 'Bodybuilding',
     powerlifting: 'Powerlifting',
     crossfit: 'CrossFit',
-    homeWorkout: 'Home Workout',
-    stretching: 'Yoga & Stretching',
+    homeWorkout: 'Home',
+    stretching: 'Yoga',
+    difficulty: 'Difficulty',
+    beginner: 'Novice (Beginner)',
+    intermediate: 'Adept (Intermediate)',
+    advanced: 'Elite (Advanced)',
     
     // Friends & Social
     removeFriend: 'Remove Friend',
@@ -50,7 +54,7 @@ export const TRANSLATIONS = {
     authError: 'An error occurred during authentication.',
     charCreation: 'Character Creation',
     step1: 'Physical Stats',
-    step2: 'Choose your Path',
+    step2: 'Choose Class',
     gender: 'Gender',
     male: 'Male',
     female: 'Female',
@@ -65,7 +69,7 @@ export const TRANSLATIONS = {
     monkDesc: 'Disciplined mind and body. Focus on Bodyweight and Flexibility.',
     xp: 'XP',
     chapter: 'Chapter',
-    campaign: 'Campaign Map',
+    campaign: 'Campaign',
     loading: 'Loading Realm...',
     levelUp: 'LEVEL UP!',
     questComplete: 'Quest Complete!',
@@ -160,13 +164,17 @@ export const TRANSLATIONS = {
     hero: 'Герой',
 
     // Auth & Onboarding
-    step3: 'Путь Тренировок',
-    selectPath: 'Выберите Дисциплину',
+    step3: 'Боевая готовность',
+    selectPath: 'Дисциплина',
     bodybuilding: 'Бодибилдинг',
     powerlifting: 'Пауэрлифтинг',
     crossfit: 'Кроссфит',
-    homeWorkout: 'Домашние тренировки',
-    stretching: 'Йога и Растяжка',
+    homeWorkout: 'Дома',
+    stretching: 'Йога',
+    difficulty: 'Сложность',
+    beginner: 'Новичок',
+    intermediate: 'Любитель',
+    advanced: 'Элита',
 
     // Friends & Social
     removeFriend: 'Удалить друга',
@@ -199,7 +207,7 @@ export const TRANSLATIONS = {
     authError: 'Ошибка при авторизации.',
     charCreation: 'Создание Персонажа',
     step1: 'Физические Данные',
-    step2: 'Выберите Путь',
+    step2: 'Выберите Класс',
     gender: 'Пол',
     male: 'Мужской',
     female: 'Женский',
@@ -214,7 +222,7 @@ export const TRANSLATIONS = {
     monkDesc: 'Дисциплина ума и тела. Упор на Собственный вес и Гибкость.',
     xp: 'Опыт',
     chapter: 'Глава',
-    campaign: 'Карта Кампании',
+    campaign: 'Кампания',
     loading: 'Загрузка мира...',
     levelUp: 'НОВЫЙ УРОВЕНЬ!',
     questComplete: 'Квест Завершен!',
@@ -307,6 +315,7 @@ export const MOCK_USER: UserProfile = {
   username: 'IronLifter',
   class: ClassType.WARRIOR,
   trainingPath: TrainingPath.BODYBUILDING,
+  difficulty: Difficulty.INTERMEDIATE,
   level: 5,
   current_xp: 750,
   max_xp: 1200,
@@ -324,6 +333,8 @@ export const MOCK_USER: UserProfile = {
   streak: 12,
   guildId: null,
 };
+
+// ... keep inventory and shop items as they were ...
 
 export const MOCK_INVENTORY: InventoryItem[] = [
   {

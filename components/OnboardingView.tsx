@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
-import { ClassType, UserProfile } from '../types';
-import { Ruler, Weight as WeightIcon, Sword, Activity, Target, ChevronRight, Check } from 'lucide-react';
+import { ClassType, UserProfile, Difficulty } from '../types';
+import { Ruler, Weight as WeightIcon, Sword, Activity, Target, ChevronRight, Check, Zap, Skull, Shield } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 
 interface Props {
   user: UserProfile;
   lang: 'en' | 'ru';
-  onComplete: (data: { gender: 'male' | 'female' | 'other'; height: number; weight: number; class: ClassType }) => void;
+  onComplete: (data: { gender: 'male' | 'female' | 'other'; height: number; weight: number; class: ClassType; difficulty: Difficulty }) => void;
 }
 
 const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [height, setHeight] = useState<string>('');
   const [weight, setWeight] = useState<string>('');
   const [selectedClass, setSelectedClass] = useState<ClassType>(ClassType.WARRIOR);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>(Difficulty.BEGINNER);
 
   const t = TRANSLATIONS[lang];
 
@@ -39,9 +40,17 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
     },
   };
 
+  const DIFFICULTY_CONFIG = {
+    [Difficulty.BEGINNER]: { label: t.beginner, icon: Shield, color: 'text-green-400', border: 'border-green-500' },
+    [Difficulty.INTERMEDIATE]: { label: t.intermediate, icon: Sword, color: 'text-amber-400', border: 'border-amber-500' },
+    [Difficulty.ADVANCED]: { label: t.advanced, icon: Skull, color: 'text-red-400', border: 'border-red-500' },
+  };
+
   const handleNext = () => {
     if (step === 1 && height && weight) {
       setStep(2);
+    } else if (step === 2) {
+      setStep(3);
     }
   };
 
@@ -50,9 +59,12 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
       gender,
       height: Number(height),
       weight: Number(weight),
-      class: selectedClass
+      class: selectedClass,
+      difficulty: selectedDifficulty
     });
   };
+
+  const progressBarWidth = step === 1 ? 'w-1/3' : step === 2 ? 'w-2/3' : 'w-full';
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -61,10 +73,10 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
            <h1 className="text-3xl font-bold text-white mb-2">{t.charCreation}</h1>
-           <p className="text-slate-400">{t.chapter} {step}: {step === 1 ? t.step1 : t.step2}</p>
+           <p className="text-slate-400">{t.chapter} {step}: {step === 1 ? t.step1 : step === 2 ? t.step2 : t.step3}</p>
            
            <div className="w-full h-1 bg-slate-800 rounded-full mt-4 overflow-hidden">
-             <div className={`h-full bg-amber-500 transition-all duration-500 ${step === 1 ? 'w-1/2' : 'w-full'}`}></div>
+             <div className={`h-full bg-amber-500 transition-all duration-500 ${progressBarWidth}`}></div>
            </div>
         </div>
 
@@ -166,12 +178,51 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
                 })}
 
                 <button 
+                  onClick={handleNext}
+                  className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 mt-6"
+               >
+                  {t.nextStep} <ChevronRight className="w-5 h-5" />
+               </button>
+             </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4 animate-in slide-in-from-right duration-300">
+               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.difficulty}</label>
+               
+               {Object.values(Difficulty).map((d) => {
+                  const config = DIFFICULTY_CONFIG[d];
+                  const Icon = config.icon;
+                  const isSelected = selectedDifficulty === d;
+
+                  return (
+                    <button
+                      key={d}
+                      onClick={() => setSelectedDifficulty(d)}
+                      className={`w-full p-4 rounded-xl border text-left flex items-center gap-4 transition-all ${
+                        isSelected 
+                          ? `bg-slate-800 ${config.border} ring-1 ring-opacity-50` 
+                          : 'bg-slate-950 border-slate-800 hover:border-slate-600'
+                      }`}
+                    >
+                       <div className={`w-10 h-10 rounded-full flex items-center justify-center border border-slate-700 ${isSelected ? config.color : 'text-slate-500'}`}>
+                          <Icon className="w-5 h-5" />
+                       </div>
+                       <div className="flex-1">
+                          <h3 className={`font-bold text-lg ${isSelected ? 'text-white' : 'text-slate-400'}`}>{config.label}</h3>
+                       </div>
+                       {isSelected && <Check className={`w-5 h-5 ${config.color}`} />}
+                    </button>
+                  );
+               })}
+
+                <button 
                   onClick={handleSubmit}
                   className="w-full py-4 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(245,158,11,0.4)] flex items-center justify-center gap-2 mt-6"
                >
                   {t.completeSetup}
                </button>
-             </div>
+            </div>
           )}
 
         </div>
