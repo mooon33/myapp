@@ -1,4 +1,4 @@
-import { UserProfile, ClassType, WorkoutNode, InventoryItem, Guild, ChatMessage } from './types';
+import { UserProfile, ClassType, WorkoutNode, InventoryItem, Guild, ChatMessage, ShopItem } from './types';
 
 export const MOCK_USER: UserProfile = {
   id: 'u-123',
@@ -52,7 +52,49 @@ export const MOCK_INVENTORY: InventoryItem[] = [
   },
 ];
 
+export const MOCK_SHOP_ITEMS: ShopItem[] = [
+  {
+    id: 's-1',
+    name: 'Protein Potion',
+    type: 'consumable',
+    rarity: 'common',
+    price: 50,
+    description: 'Instantly restores energy and boosts recovery.',
+    image_url: 'https://picsum.photos/seed/potion/100/100',
+  },
+  {
+    id: 's-2',
+    name: 'Iron Belt',
+    type: 'accessory',
+    rarity: 'rare',
+    price: 350,
+    statBonus: { str: 5 },
+    description: 'Increases core stability. Adds +5 STR.',
+    image_url: 'https://picsum.photos/seed/belt/100/100',
+  },
+  {
+    id: 's-3',
+    name: 'Berserker Wraps',
+    type: 'weapon',
+    rarity: 'epic',
+    price: 800,
+    statBonus: { will: 8, str: 3 },
+    description: 'Wrist wraps infused with ancient rage.',
+    image_url: 'https://picsum.photos/seed/wraps/100/100',
+  },
+  {
+    id: 's-4',
+    name: 'Chalk of Grip',
+    type: 'consumable',
+    rarity: 'common',
+    price: 25,
+    description: 'Never let go. Increases grip strength for one session.',
+    image_url: 'https://picsum.photos/seed/chalk/100/100',
+  },
+];
+
 export const CAMPAIGN_MAP: WorkoutNode[] = [
+  // CHAPTER 1
   {
     id: 'w-1',
     title: 'The Awakening',
@@ -63,6 +105,7 @@ export const CAMPAIGN_MAP: WorkoutNode[] = [
     goldReward: 50,
     position: { x: 50, y: 10 },
     exercises: [],
+    chapter: 1,
   },
   {
     id: 'w-2',
@@ -77,6 +120,7 @@ export const CAMPAIGN_MAP: WorkoutNode[] = [
       { id: 'ex-1', name: 'Goblet Squat', sets: 3, reps: 12, weight: 20 },
       { id: 'ex-2', name: 'Pushups', sets: 3, reps: 15 },
     ],
+    chapter: 1,
   },
   {
     id: 'w-3',
@@ -91,6 +135,7 @@ export const CAMPAIGN_MAP: WorkoutNode[] = [
       { id: 'ex-3', name: 'Barbell Squat', sets: 5, reps: 5, weight: 100 },
       { id: 'ex-4', name: 'Overhead Press', sets: 5, reps: 5, weight: 45 },
     ],
+    chapter: 1,
   },
   {
     id: 'w-4',
@@ -104,7 +149,36 @@ export const CAMPAIGN_MAP: WorkoutNode[] = [
     exercises: [
       { id: 'ex-5', name: 'Deadlift PR Attempt', sets: 1, reps: 1, weight: 185 },
     ],
+    chapter: 1,
   },
+  // CHAPTER 2
+  {
+    id: 'w-5',
+    title: 'Valley of Cardio',
+    description: 'Endurance testing in the misty valley.',
+    type: 'story',
+    status: 'locked',
+    xpReward: 200,
+    goldReward: 100,
+    position: { x: 50, y: 20 },
+    exercises: [],
+    chapter: 2,
+  },
+  {
+    id: 'w-6',
+    title: 'Troll Bridge',
+    description: 'High intensity interval training.',
+    type: 'workout',
+    status: 'locked',
+    xpReward: 350,
+    goldReward: 150,
+    position: { x: 20, y: 50 },
+    exercises: [
+        { id: 'ex-6', name: 'Burpees', sets: 4, reps: 15 },
+        { id: 'ex-7', name: 'Jump Squats', sets: 4, reps: 20 },
+    ],
+    chapter: 2,
+  }
 ];
 
 export const MOCK_GUILDS: Guild[] = [

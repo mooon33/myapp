@@ -1,24 +1,34 @@
 import React, { useState } from 'react';
-import { UserProfile, WorkoutNode, Guild } from './types';
-import { MOCK_USER, CAMPAIGN_MAP, MOCK_INVENTORY, MOCK_GUILDS } from './constants';
+import { UserProfile, WorkoutNode, Guild, ShopItem } from './types';
+import { MOCK_USER, CAMPAIGN_MAP, MOCK_INVENTORY, MOCK_GUILDS, MOCK_SHOP_ITEMS } from './constants';
 import CharacterDisplay from './components/CharacterDisplay';
 import WorkoutMap from './components/WorkoutMap';
 import ActiveSession from './components/ActiveSession';
 import Inventory from './components/Inventory';
 import GuildsView from './components/GuildsView';
-import { Map, User as UserIcon, Users, Dumbbell } from 'lucide-react';
+import ShopView from './components/ShopView';
+import SettingsView from './components/SettingsView';
+import { Map, User as UserIcon, Users, Settings, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Using a simple View state instead of Router for this demo
-type ViewState = 'map' | 'profile' | 'guild' | 'workout';
+type ViewState = 'map' | 'profile' | 'guild' | 'workout' | 'shop' | 'settings';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('map');
   const [user, setUser] = useState<UserProfile>(MOCK_USER);
   const [activeNode, setActiveNode] = useState<WorkoutNode | null>(null);
   const [guilds, setGuilds] = useState<Guild[]>(MOCK_GUILDS);
+  const [currentChapter, setCurrentChapter] = useState(1);
+  const [userInventory, setUserInventory] = useState(MOCK_INVENTORY);
   
   // Confetti/Level up state (simplified for demo)
   const [notification, setNotification] = useState<string | null>(null);
+
+  // Helper to handle notifications
+  const triggerNotification = (msg: string, duration = 2000) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), duration);
+  };
 
   const handleNodeClick = (node: WorkoutNode) => {
     setActiveNode(node);
@@ -32,11 +42,9 @@ const App: React.FC = () => {
       const leveledUp = newXp >= prev.max_xp;
       
       if (leveledUp) {
-         setNotification(`LEVEL UP! You are now level ${prev.level + 1}`);
-         setTimeout(() => setNotification(null), 5000);
+         triggerNotification(`LEVEL UP! You are now level ${prev.level + 1}`, 5000);
       } else {
-         setNotification(`Quest Complete! +${xp} XP, +${gold} Gold`);
-         setTimeout(() => setNotification(null), 3000);
+         triggerNotification(`Quest Complete! +${xp} XP, +${gold} Gold`, 3000);
       }
 
       return {
@@ -60,67 +68,70 @@ const App: React.FC = () => {
 
   const handleJoinGuild = (guildId: string) => {
     const targetGuild = guilds.find(g => g.id === guildId);
-    
-    // Safety check for capacity
     if (targetGuild && targetGuild.members >= targetGuild.maxMembers) {
-      setNotification("Guild is full!");
-      setTimeout(() => setNotification(null), 2000);
+      triggerNotification("Guild is full!");
       return;
     }
-
-    // 1. Update User
     setUser(prev => ({ ...prev, guildId }));
-
-    // 2. Update Guild Member Count
     setGuilds(prev => prev.map(g => {
-      if (g.id === guildId) {
-        return { ...g, members: g.members + 1 };
-      }
+      if (g.id === guildId) return { ...g, members: g.members + 1 };
       return g;
     }));
-
-    setNotification("Joined Guild Successfully!");
-    setTimeout(() => setNotification(null), 2000);
+    triggerNotification("Joined Guild Successfully!");
   };
 
   const handleLeaveGuild = () => {
     if (!user.guildId) return;
-
-    // 1. Update Guild Member Count
     setGuilds(prev => prev.map(g => {
-      if (g.id === user.guildId) {
-        return { ...g, members: Math.max(0, g.members - 1) };
-      }
+      if (g.id === user.guildId) return { ...g, members: Math.max(0, g.members - 1) };
       return g;
     }));
-
-    // 2. Update User
     setUser(prev => ({ ...prev, guildId: null }));
-    
-    setNotification("Left Guild.");
-    setTimeout(() => setNotification(null), 2000);
+    triggerNotification("Left Guild.");
   };
 
   const handleCreateGuild = (data: { name: string; description: string; icon: Guild['icon'] }) => {
     const newGuildId = `g-${Date.now()}`;
-    
     const newGuild: Guild = {
       id: newGuildId,
       name: data.name,
       description: data.description,
       icon: data.icon,
-      members: 1, // Start with the creator
-      maxMembers: 30, // Default limit
+      members: 1,
+      maxMembers: 30,
       totalXp: 0,
-      rank: guilds.length + 1, // Put at bottom initially
+      rank: guilds.length + 1,
     };
-
     setGuilds(prev => [...prev, newGuild]);
     setUser(prev => ({ ...prev, guildId: newGuildId }));
-    
-    setNotification(`Guild "${data.name}" Created!`);
-    setTimeout(() => setNotification(null), 2000);
+    triggerNotification(`Guild "${data.name}" Created!`);
   };
+
+  const handleBuyItem = (item: ShopItem) => {
+    if (user.gold < item.price) {
+      triggerNotification("Not enough gold!");
+      return;
+    }
+
+    setUser(prev => ({ ...prev, gold: prev.gold - item.price }));
+    
+    // Add to inventory
+    const newItem = {
+      ...item,
+      id: `i-${Date.now()}`, // unique ID for inventory instance
+      is_equipped: false,
+    };
+    
+    // Remove description/price for inventory type compatibility if strictly typed, 
+    // but TS allows extra props usually. casting for safety
+    setUserInventory(prev => [...prev, newItem]);
+    
+    triggerNotification(`Purchased ${item.name}!`);
+  };
+
+  // Filter nodes for current chapter
+  const currentNodes = CAMPAIGN_MAP.filter(n => n.chapter === currentChapter);
+  const maxChapters = Math.max(...CAMPAIGN_MAP.map(n => n.chapter || 1));
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex justify-center">
@@ -148,14 +159,23 @@ const App: React.FC = () => {
                     <span className="text-sm font-mono text-amber-400">{user.gold} 🪙</span>
                  </div>
                </div>
-               <div className="text-xs font-bold text-orange-500 animate-pulse">
-                 🔥 {user.streak} Day Streak
+               
+               <div className="flex items-center gap-4">
+                  <div className="text-xs font-bold text-orange-500 animate-pulse hidden sm:block">
+                    🔥 {user.streak} Day Streak
+                  </div>
+                  <button 
+                    onClick={() => setView('settings')}
+                    className={`p-2 rounded-full transition-colors ${view === 'settings' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
                </div>
             </div>
 
             {/* Notification Toast */}
             {notification && (
-              <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-slate-950 px-6 py-3 rounded-full font-bold shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-bounce">
+              <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-slate-950 px-6 py-3 rounded-full font-bold shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-bounce text-center whitespace-nowrap">
                 {notification}
               </div>
             )}
@@ -165,9 +185,33 @@ const App: React.FC = () => {
               {view === 'map' && (
                 <div className="p-4">
                   <CharacterDisplay user={user} />
+                  
                   <div className="mt-6">
-                    <h3 className="text-slate-400 uppercase tracking-widest text-xs font-bold mb-4 text-center">Campaign Map</h3>
-                    <WorkoutMap nodes={CAMPAIGN_MAP} onNodeClick={handleNodeClick} />
+                    {/* Chapter Header & Controls */}
+                    <div className="flex items-center justify-between mb-4 px-2">
+                      <button 
+                        onClick={() => setCurrentChapter(prev => Math.max(1, prev - 1))}
+                        disabled={currentChapter === 1}
+                        className="p-1 rounded hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent"
+                      >
+                        <ChevronLeft className="w-6 h-6 text-slate-400" />
+                      </button>
+                      
+                      <div className="text-center">
+                        <h3 className="text-slate-400 uppercase tracking-widest text-xs font-bold">Campaign Map</h3>
+                        <h2 className="text-xl font-bold text-white">Chapter {currentChapter}</h2>
+                      </div>
+
+                      <button 
+                        onClick={() => setCurrentChapter(prev => Math.min(maxChapters, prev + 1))}
+                        disabled={currentChapter === maxChapters}
+                        className="p-1 rounded hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent"
+                      >
+                        <ChevronRight className="w-6 h-6 text-slate-400" />
+                      </button>
+                    </div>
+
+                    <WorkoutMap nodes={currentNodes} onNodeClick={handleNodeClick} />
                   </div>
                 </div>
               )}
@@ -177,7 +221,7 @@ const App: React.FC = () => {
                     <h2 className="text-2xl font-bold mb-4">Hero Profile</h2>
                     <CharacterDisplay user={user} />
                     <div className="mt-6">
-                       <Inventory items={MOCK_INVENTORY} />
+                       <Inventory items={userInventory} />
                     </div>
                  </div>
               )}
@@ -191,6 +235,18 @@ const App: React.FC = () => {
                     onLeaveGuild={handleLeaveGuild}
                     onCreateGuild={handleCreateGuild}
                  />
+              )}
+
+              {view === 'shop' && (
+                <ShopView 
+                  items={MOCK_SHOP_ITEMS} 
+                  userGold={user.gold} 
+                  onBuy={handleBuyItem} 
+                />
+              )}
+
+              {view === 'settings' && (
+                <SettingsView />
               )}
             </div>
 
@@ -213,12 +269,11 @@ const App: React.FC = () => {
               </button>
 
               <button 
-                onClick={() => setView('workout')} // Just opens map context mostly, but could be quick start
-                className="flex flex-col items-center gap-1 p-2 -mt-8"
+                onClick={() => setView('shop')}
+                className={`flex flex-col items-center gap-1 p-2 rounded-lg w-16 transition-colors ${view === 'shop' ? 'text-amber-500' : 'text-slate-500 hover:text-slate-300'}`}
               >
-                <div className="w-14 h-14 rounded-full bg-violet-600 border-4 border-slate-900 flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.5)] text-white">
-                  <Dumbbell className="w-7 h-7" />
-                </div>
+                <ShoppingBag className="w-6 h-6" />
+                <span className="text-[10px] uppercase font-bold">Shop</span>
               </button>
 
               <button 

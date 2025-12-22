@@ -19,10 +19,15 @@ export interface Stats {
 export interface Item {
   id: string;
   name: string;
-  type: 'weapon' | 'armor' | 'accessory';
+  type: 'weapon' | 'armor' | 'accessory' | 'consumable';
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   statBonus?: Partial<Attributes>;
   image_url: string;
+}
+
+export interface ShopItem extends Item {
+  price: number;
+  description: string;
 }
 
 export interface UserProfile {
@@ -53,6 +58,7 @@ export interface WorkoutNode {
   goldReward: number;
   exercises: Exercise[];
   position: { x: number; y: number }; // For map layout
+  chapter: number; // New field for chapter organization
 }
 
 export interface Exercise {
