@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserProfile, WorkoutNode, Guild, ShopItem } from './types';
+import { UserProfile, WorkoutNode, Guild, ShopItem, ClassType } from './types';
 import { MOCK_USER, CAMPAIGN_MAP, MOCK_INVENTORY, MOCK_GUILDS, MOCK_SHOP_ITEMS } from './constants';
 import CharacterDisplay from './components/CharacterDisplay';
 import WorkoutMap from './components/WorkoutMap';
@@ -28,6 +28,11 @@ const App: React.FC = () => {
   const triggerNotification = (msg: string, duration = 2000) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), duration);
+  };
+
+  const handleUpdateClass = (newClass: ClassType) => {
+    setUser(prev => ({ ...prev, class: newClass }));
+    triggerNotification(`Class changed to ${newClass}!`);
   };
 
   const handleNodeClick = (node: WorkoutNode) => {
@@ -184,7 +189,7 @@ const App: React.FC = () => {
             <div className="flex-1 overflow-y-auto pb-24">
               {view === 'map' && (
                 <div className="p-4">
-                  <CharacterDisplay user={user} />
+                  <CharacterDisplay user={user} onUpdateClass={handleUpdateClass} />
                   
                   <div className="mt-6">
                     {/* Chapter Header & Controls */}
@@ -219,7 +224,7 @@ const App: React.FC = () => {
               {view === 'profile' && (
                  <div className="p-4">
                     <h2 className="text-2xl font-bold mb-4">Hero Profile</h2>
-                    <CharacterDisplay user={user} />
+                    <CharacterDisplay user={user} onUpdateClass={handleUpdateClass} />
                     <div className="mt-6">
                        <Inventory items={userInventory} />
                     </div>
