@@ -1,23 +1,36 @@
 import React, { useState } from 'react';
-import { ClassType, UserProfile, Difficulty } from '../types';
-import { Ruler, Weight as WeightIcon, Sword, Activity, Target, ChevronRight, Check, Zap, Skull, Shield } from 'lucide-react';
+import { ClassType, UserProfile, Difficulty, Stats } from '../types';
+import { Ruler, Weight as WeightIcon, Sword, Activity, Target, ChevronRight, Check, Zap, Skull, Shield, Dumbbell } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 
 interface Props {
   user: UserProfile;
   lang: 'en' | 'ru';
-  onComplete: (data: { gender: 'male' | 'female' | 'other'; height: number; weight: number; class: ClassType; difficulty: Difficulty }) => void;
+  onComplete: (data: { gender: 'male' | 'female' | 'other'; height: number; weight: number; class: ClassType; difficulty: Difficulty; stats: Stats }) => void;
 }
 
 const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [height, setHeight] = useState<string>('');
   const [weight, setWeight] = useState<string>('');
+  
+  // New Stats State
+  const [squat, setSquat] = useState<string>('');
+  const [bench, setBench] = useState<string>('');
+  const [deadlift, setDeadlift] = useState<string>('');
+
   const [selectedClass, setSelectedClass] = useState<ClassType>(ClassType.WARRIOR);
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>(Difficulty.BEGINNER);
 
   const t = TRANSLATIONS[lang];
+
+  // Local translations for the new step if not in constants yet
+  const localT = {
+      strengthStats: lang === 'ru' ? 'Силовые показатели' : 'Strength Stats',
+      strengthDesc: lang === 'ru' ? 'Введите ваши 1ПМ (максимум на 1 раз) для расчета программы.' : 'Enter your 1RM (One Rep Max) to calculate training loads.',
+      ifUnknown: lang === 'ru' ? 'Если не знаете, введите примерный вес на 5 повторений.' : 'If unknown, enter approximate weight for 5 reps.'
+  };
 
   const CLASS_DESCRIPTIONS = {
     [ClassType.WARRIOR]: { 
@@ -50,7 +63,10 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
     if (step === 1 && height && weight) {
       setStep(2);
     } else if (step === 2) {
+      // Validate stats - allow 0 but ensure they are numbers
       setStep(3);
+    } else if (step === 3) {
+      setStep(4);
     }
   };
 
@@ -60,11 +76,16 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
       height: Number(height),
       weight: Number(weight),
       class: selectedClass,
-      difficulty: selectedDifficulty
+      difficulty: selectedDifficulty,
+      stats: {
+          squat_1rm: Number(squat) || 0,
+          bench_1rm: Number(bench) || 0,
+          deadlift_1rm: Number(deadlift) || 0
+      }
     });
   };
 
-  const progressBarWidth = step === 1 ? 'w-1/3' : step === 2 ? 'w-2/3' : 'w-full';
+  const progressBarWidth = step === 1 ? 'w-1/4' : step === 2 ? 'w-2/4' : step === 3 ? 'w-3/4' : 'w-full';
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -73,7 +94,7 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
            <h1 className="text-3xl font-bold text-white mb-2">{t.charCreation}</h1>
-           <p className="text-slate-400">{t.chapter} {step}: {step === 1 ? t.step1 : step === 2 ? t.step2 : t.step3}</p>
+           <p className="text-slate-400">{t.chapter} {step}: {step === 1 ? t.step1 : step === 2 ? localT.strengthStats : step === 3 ? t.step2 : t.step3}</p>
            
            <div className="w-full h-1 bg-slate-800 rounded-full mt-4 overflow-hidden">
              <div className={`h-full bg-amber-500 transition-all duration-500 ${progressBarWidth}`}></div>
@@ -142,7 +163,68 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
             </div>
           )}
 
+          {/* STEP 2: STRENGTH STATS (New Step) */}
           {step === 2 && (
+             <div className="space-y-4 animate-in slide-in-from-right duration-300">
+                <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800 mb-2">
+                    <p className="text-xs text-slate-400 leading-relaxed text-center">
+                        {localT.strengthDesc} <br/>
+                        <span className="text-slate-500 italic">{localT.ifUnknown}</span>
+                    </p>
+                </div>
+
+                <div>
+                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.squat} (kg)</label>
+                   <div className="relative">
+                       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold">SQ</div>
+                       <input 
+                          type="number" 
+                          value={squat}
+                          onChange={(e) => setSquat(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-10 pr-3 text-white focus:border-amber-500 focus:outline-none font-mono"
+                          placeholder="0"
+                       />
+                   </div>
+                </div>
+
+                <div>
+                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.bench} (kg)</label>
+                   <div className="relative">
+                       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold">BP</div>
+                       <input 
+                          type="number" 
+                          value={bench}
+                          onChange={(e) => setBench(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-10 pr-3 text-white focus:border-amber-500 focus:outline-none font-mono"
+                          placeholder="0"
+                       />
+                   </div>
+                </div>
+
+                <div>
+                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.deadlift} (kg)</label>
+                   <div className="relative">
+                       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold">DL</div>
+                       <input 
+                          type="number" 
+                          value={deadlift}
+                          onChange={(e) => setDeadlift(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-10 pr-3 text-white focus:border-amber-500 focus:outline-none font-mono"
+                          placeholder="0"
+                       />
+                   </div>
+                </div>
+
+                <button 
+                  onClick={handleNext}
+                  className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 mt-6"
+               >
+                  {t.nextStep} <ChevronRight className="w-5 h-5" />
+               </button>
+             </div>
+          )}
+
+          {step === 3 && (
              <div className="space-y-4 animate-in slide-in-from-right duration-300">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.selectClass}</label>
                 
@@ -186,7 +268,7 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
              </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div className="space-y-4 animate-in slide-in-from-right duration-300">
                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.difficulty}</label>
                

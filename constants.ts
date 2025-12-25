@@ -1,4 +1,6 @@
 
+
+
 import { UserProfile, ClassType, WorkoutNode, InventoryItem, Guild, ChatMessage, ShopItem, Friend, SpriteMilestone, TrainingPath, Difficulty } from './types';
 
 export const TRANSLATIONS = {
@@ -6,7 +8,7 @@ export const TRANSLATIONS = {
     // Navigation
     map: 'Map',
     social: 'Social',
-    evolve: 'Evolve',
+    avatar: 'Avatar', // Changed from Evolve
     shop: 'Shop',
     hero: 'Hero',
     
@@ -135,11 +137,16 @@ export const TRANSLATIONS = {
     gotIt: 'Got it',
     completeQuest: 'Complete Quest',
     completed: 'Completed',
-    evolutionPath: 'Evolution Path',
-    evolutionDesc: 'Your journey from novice to legend. Train hard to unlock new forms.',
-    unlocked: 'Unlocked',
-    nextMilestone: 'Next Milestone',
-    moreComing: 'More coming soon',
+    
+    // Avatar / Evolution specific
+    avatarTitle: 'Hero Avatar',
+    bodyProgress: 'Body Evolution',
+    nextForm: 'Next Form',
+    maxForm: 'Peak Physique Reached',
+    inventory: 'Inventory',
+    equipped: 'Equipped',
+    emptySlot: 'Empty',
+    
     equipment: 'Equipment',
     equip: 'Equip',
     unequip: 'Unequip',
@@ -153,13 +160,20 @@ export const TRANSLATIONS = {
     logout: 'Log Out',
     selectLanguage: 'Select Language',
     english: 'English',
-    russian: 'Russian'
+    russian: 'Russian',
+
+    // Missing keys for EvolutionView
+    evolutionPath: 'Evolution Path',
+    evolutionDesc: 'Transform your physique as you level up.',
+    unlocked: 'Unlocked',
+    nextMilestone: 'Next Milestone',
+    moreComing: 'More Coming Soon',
   },
   ru: {
     // Navigation
     map: 'Карта',
     social: 'Союз',
-    evolve: 'Развитие',
+    avatar: 'Аватар', // Changed from Развитие
     shop: 'Магазин',
     hero: 'Герой',
 
@@ -288,11 +302,16 @@ export const TRANSLATIONS = {
     gotIt: 'Понятно',
     completeQuest: 'Завершить Квест',
     completed: 'Выполнено',
-    evolutionPath: 'Путь Эволюции',
-    evolutionDesc: 'Твой путь от новичка до легенды. Тренируйся, чтобы открыть новые формы.',
-    unlocked: 'Открыто',
-    nextMilestone: 'Следующая цель',
-    moreComing: 'Скоро будет больше',
+    
+    // Avatar / Evolution specific
+    avatarTitle: 'Аватар Героя',
+    bodyProgress: 'Эволюция Тела',
+    nextForm: 'Следующая Форма',
+    maxForm: 'Пиковая Форма',
+    inventory: 'Инвентарь',
+    equipped: 'Надето',
+    emptySlot: 'Пусто',
+
     equipment: 'Снаряжение',
     equip: 'Надеть',
     unequip: 'Снять',
@@ -306,7 +325,14 @@ export const TRANSLATIONS = {
     logout: 'Выйти',
     selectLanguage: 'Выберите Язык',
     english: 'Английский',
-    russian: 'Русский'
+    russian: 'Русский',
+
+    // Missing keys for EvolutionView
+    evolutionPath: 'Путь Эволюции',
+    evolutionDesc: 'Изменяйте свое тело по мере повышения уровня.',
+    unlocked: 'Открыто',
+    nextMilestone: 'Следующая цель',
+    moreComing: 'Скоро будет больше',
   }
 };
 
@@ -332,6 +358,7 @@ export const MOCK_USER: UserProfile = {
   },
   streak: 12,
   guildId: null,
+  completedWorkouts: [], // Added
 };
 
 // ... keep inventory and shop items as they were ...
@@ -448,7 +475,24 @@ const POWERLIFTING_MAP: WorkoutNode[] = [
     {
       id: 'pl-2', title: 'Heavy Squat Session', description: 'Low reps, high intensity.',
       type: 'workout', status: 'available', xpReward: 250, goldReward: 120, position: { x: 50, y: 40 }, 
-      exercises: [{ id: 'ex-pl-1', name: 'Low Bar Squat', sets: 5, reps: 3, weight: 100 }], chapter: 1,
+      exercises: [
+          { 
+              id: 'ex-pl-1', 
+              name: 'Low Bar Squat', 
+              sets: 5, 
+              reps: 5, 
+              percent1rm: 0.75, // 75% of 1RM
+              targetStat: 'squat_1rm' 
+          },
+          {
+              id: 'ex-pl-2',
+              name: 'Pause Squat',
+              sets: 3,
+              reps: 4,
+              rpe: 7
+          }
+      ], 
+      chapter: 1,
     }
 ];
 
@@ -558,11 +602,21 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = [];
 // Replaced with empty default, will load from DB
 export const MOCK_FRIENDS: Friend[] = [];
 
+// REPLACE THESE URLs WITH YOUR LOCAL ASSETS OR HOSTED IMAGES
 export const SPRITE_EVOLUTION: SpriteMilestone[] = [
-  { level: 1, title: 'Novice', imageUrl: 'https://picsum.photos/seed/lvl1/200/200' },
-  { level: 5, title: 'Apprentice', imageUrl: 'https://picsum.photos/seed/lvl5/200/200' },
-  { level: 10, title: 'Adept', imageUrl: 'https://picsum.photos/seed/lvl10/200/200' },
-  { level: 20, title: 'Expert', imageUrl: 'https://picsum.photos/seed/lvl20/200/200' },
-  { level: 30, title: 'Master', imageUrl: 'https://picsum.photos/seed/lvl30/200/200' },
-  { level: 50, title: 'Legend', imageUrl: 'https://picsum.photos/seed/lvl50/200/200' },
+  { 
+    level: 1, 
+    title: 'Beginner', 
+    imageUrl: 'https://ygvpycmjsrfxismnszir.supabase.co/storage/v1/object/public/avatars/1.png' // Placeholder for body_stage_1.png
+  },
+  { 
+    level: 10, 
+    title: 'Athletic', 
+    imageUrl: 'https://ygvpycmjsrfxismnszir.supabase.co/storage/v1/object/public/avatars/2.png' // Placeholder for body_stage_2.png
+  },
+  { 
+    level: 30, 
+    title: 'Ripped', 
+    imageUrl: 'https://ygvpycmjsrfxismnszir.supabase.co/storage/v1/object/public/avatars/3.png' // Placeholder for body_stage_3.png
+  },
 ];

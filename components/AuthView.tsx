@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Sword, Shield, Loader2, AlertCircle, User, Mail, ArrowLeft, Globe } from 'lucide-react';
+import { Sword, Shield, Loader2, AlertCircle, User, Mail, ArrowLeft, Globe, RefreshCw } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 
 interface Props {
@@ -18,6 +18,33 @@ const AuthView: React.FC<Props> = ({ currentLang = 'en', onToggleLang }) => {
   const [checkEmail, setCheckEmail] = useState(false);
 
   const t = TRANSLATIONS[currentLang];
+
+  // Auto-check for session when on "Check Email" screen
+  useEffect(() => {
+    let interval: any;
+    if (checkEmail) {
+        // Listen for auth changes (e.g. user verified in another tab)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                // App.tsx will handle the view change, we just need to ensure we don't block it
+                setCheckEmail(false);
+            }
+        });
+
+        // Polling as a fallback
+        interval = setInterval(async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                setCheckEmail(false);
+            }
+        }, 2000);
+
+        return () => {
+            subscription.unsubscribe();
+            clearInterval(interval);
+        };
+    }
+  }, [checkEmail]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,15 +74,21 @@ const AuthView: React.FC<Props> = ({ currentLang = 'en', onToggleLang }) => {
           options: {
             data: {
               username: username,
-            }
+            },
+            // CRITICAL: This ensures the user is redirected back to the app 
+            // with a session token after clicking the email link.
+            emailRedirectTo: window.location.origin 
           }
         });
         
         if (error) throw error;
 
+        // If 'Confirm Email' is disabled in Supabase, data.session will be present immediately.
+        // If it is enabled, data.session is null.
         if (data.user && !data.session) {
             setCheckEmail(true);
         }
+        // If data.session exists, App.tsx will automatically detect the state change via onAuthStateChange
 
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -80,26 +113,34 @@ const AuthView: React.FC<Props> = ({ currentLang = 'en', onToggleLang }) => {
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
         
-        <div className="w-full max-w-md bg-slate-900 border border-slate-700 p-8 rounded-2xl shadow-2xl relative z-10 text-center">
-          <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center border-4 border-slate-700 mb-6 shadow-[0_0_20px_rgba(59,130,246,0.2)] mx-auto">
+        <div className="w-full max-w-md bg-slate-900 border border-slate-700 p-8 rounded-2xl shadow-2xl relative z-10 text-center animate-in zoom-in duration-300">
+          <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center border-4 border-slate-700 mb-6 shadow-[0_0_20px_rgba(59,130,246,0.2)] mx-auto animate-pulse">
             <Mail className="w-10 h-10 text-blue-400" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">{t.checkScrolls}</h2>
           <p className="text-slate-400 mb-8 leading-relaxed text-sm">
             {t.verificationSent} <br/>
-            <span className="font-bold text-white text-base mt-1 inline-block">{email}</span>
+            <span className="font-bold text-white text-base mt-1 inline-block bg-slate-800 px-3 py-1 rounded">{email}</span>
             <br/><br/>
             {t.confirmEmail}
           </p>
-          <button 
-            onClick={() => {
-              setCheckEmail(false);
-              setIsSignUp(false);
-            }}
-            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 border border-slate-700"
-          >
-            <ArrowLeft className="w-4 h-4" /> {t.returnLogin}
-          </button>
+          
+          <div className="space-y-3">
+             <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Waiting for confirmation...
+             </div>
+
+             <button 
+                onClick={() => {
+                  setCheckEmail(false);
+                  setIsSignUp(false);
+                }}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 border border-slate-700"
+             >
+                <ArrowLeft className="w-4 h-4" /> {t.returnLogin}
+             </button>
+          </div>
         </div>
       </div>
     );
@@ -130,7 +171,7 @@ const AuthView: React.FC<Props> = ({ currentLang = 'en', onToggleLang }) => {
 
         <form onSubmit={handleAuth} className="space-y-6">
           {error && (
-            <div className="bg-red-900/30 border border-red-500/50 p-3 rounded-lg flex items-center gap-2 text-red-200 text-sm">
+            <div className="bg-red-900/30 border border-red-500/50 p-3 rounded-lg flex items-center gap-2 text-red-200 text-sm animate-in slide-in-from-top-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
             </div>

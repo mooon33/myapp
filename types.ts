@@ -29,6 +29,7 @@ export interface Stats {
   squat_1rm: number;
   bench_1rm: number;
   deadlift_1rm: number;
+  [key: string]: number; // Allow index signature
 }
 
 export interface Item {
@@ -52,6 +53,7 @@ export interface UserProfile {
   class: ClassType;
   trainingPath?: TrainingPath;
   difficulty?: Difficulty;
+  programMode?: 'normal' | 'heavy'; // New field for Powerlifting logic
   level: number;
   current_xp: number;
   max_xp: number;
@@ -60,9 +62,11 @@ export interface UserProfile {
   stats: Stats;
   streak: number;
   guildId: string | null; // Track current guild
+  completedWorkouts: string[]; // Track IDs of completed nodes to unlock next ones
   gender?: 'male' | 'female' | 'other';
   height?: number; // cm
   weight?: number; // kg
+  avatar_url?: string; // Custom uploaded avatar
 }
 
 export interface InventoryItem extends Item {
@@ -86,9 +90,14 @@ export interface Exercise {
   id: string;
   name: string;
   sets: number;
-  reps: number;
-  weight?: number; // Target weight
+  reps: number | string; // Changed to allow "Test" or "1RM" text
+  weight?: number; // Fixed weight fallback
   videoUrl?: string;
+  // New fields for complex excel logic
+  percent1rm?: number; // e.g., 0.75 for 75%
+  targetStat?: 'squat_1rm' | 'bench_1rm' | 'deadlift_1rm'; // Which stat to use
+  rpe?: number; // Rate of Perceived Exertion (optional alternative)
+  customNote?: string; // For things like "Test" or custom instructions
 }
 
 export interface WorkoutLog {

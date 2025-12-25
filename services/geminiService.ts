@@ -12,16 +12,16 @@ export const getWorkoutMotivation = async (
   workout: WorkoutNode
 ): Promise<string> => {
   if (API_KEY === 'demo-key') {
-    return "The Oracle says: Focus on your breathing and keep your core tight. You got this, warrior!";
+    return "Оракул говорит: Сосредоточься на дыхании и держи спину ровно. Ты справишься, воин!";
   }
 
   try {
     const prompt = `
-      You are a fantasy RPG wise mentor and fitness coach.
-      The user is a level ${user.level} ${user.class} named ${user.username}.
-      They are about to attempt the workout mission: "${workout.title}".
-      Description: ${workout.description}.
-      Give them a short, motivating, fantasy-themed speech (max 2 sentences) to boost their Willpower stats.
+      Ты мудрый наставник и тренер в фэнтези-RPG.
+      Пользователь - уровень ${user.level} ${user.class} по имени ${user.username}.
+      Он собирается выполнить миссию (тренировку): "${workout.title}".
+      Описание: ${workout.description}.
+      Дай ему короткую, мотивирующую речь в стиле фэнтези (максимум 2 предложения) на русском языке, чтобы повысить его характеристику Воли.
     `;
 
     const response = await ai.models.generateContent({
@@ -29,26 +29,26 @@ export const getWorkoutMotivation = async (
       contents: prompt,
     });
 
-    return response.text || "The spirits are silent, but your strength is real.";
+    return response.text || "Духи молчат, но твоя сила реальна.";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "Focus on the iron before you. The magic is within.";
+    return "Сосредоточься на железе перед тобой. Магия внутри.";
   }
 };
 
 export const getTechniqueTip = async (exerciseName: string): Promise<string> => {
    if (API_KEY === 'demo-key') {
-    return `Technique Analysis: Ensure full range of motion for ${exerciseName}. Control the eccentric phase.`;
+    return `Анализ техники: Обеспечьте полную амплитуду движения для упражнения ${exerciseName}. Контролируйте негативную фазу.`;
   }
   
   try {
-     const prompt = `Provide a single, crucial safety tip for performing the exercise: ${exerciseName}. Keep it concise and professional.`;
+     const prompt = `Дай один, самый важный совет по технике безопасности выполнения упражнения: ${exerciseName}. Будь краток и профессионален. Ответ дай на русском языке.`;
      const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
-    return response.text || "Maintain proper form to avoid injury.";
+    return response.text || "Следи за правильной формой, чтобы избежать травм.";
   } catch (error) {
-    return "Check your form in the mirror.";
+    return "Проверь свою технику перед зеркалом.";
   }
 }

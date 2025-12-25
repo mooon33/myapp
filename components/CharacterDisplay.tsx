@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { UserProfile, ClassType, Stats } from '../types';
-import { Shield, Zap, Brain, Trophy, ChevronRight, X, Swords, Activity, Target, Pencil, Save } from 'lucide-react';
-import { TRANSLATIONS } from '../constants';
+import { Shield, Zap, Brain, Trophy, ChevronRight, X, Swords, Activity, Target, Pencil, Save, Camera, Loader2 } from 'lucide-react';
+import { TRANSLATIONS, SPRITE_EVOLUTION } from '../constants';
+import { supabase } from '../lib/supabaseClient';
 
 interface Props {
   user: UserProfile;
   lang: 'en' | 'ru';
   onUpdateClass?: (newClass: ClassType) => void;
   onUpdateStats?: (newStats: Stats) => void;
+  onUpdateAvatar?: (newUrl: string) => void;
 }
 
-const CharacterDisplay: React.FC<Props> = ({ user, lang, onUpdateClass, onUpdateStats }) => {
+const CharacterDisplay: React.FC<Props> = ({ user, lang, onUpdateClass, onUpdateStats, onUpdateAvatar }) => {
   const [showClassSelector, setShowClassSelector] = useState(false);
   const [activeAttribute, setActiveAttribute] = useState<'str' | 'sta' | 'will' | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Stats Editing State
   const [isEditingStats, setIsEditingStats] = useState(false);
@@ -34,6 +38,14 @@ const CharacterDisplay: React.FC<Props> = ({ user, lang, onUpdateClass, onUpdate
 
   const xpPercentage = (user.current_xp / user.max_xp) * 100;
 
+  // Determine current sprite based on level OR use custom avatar
+  const currentEvolution = SPRITE_EVOLUTION
+    .slice()
+    .sort((a, b) => b.level - a.level) // Sort descending to find highest match
+    .find(m => user.level >= m.level) || SPRITE_EVOLUTION[0];
+    
+  const displayImage = user.avatar_url || currentEvolution.imageUrl;
+
   const handleClassSelect = (c: ClassType) => {
     if (onUpdateClass) {
       onUpdateClass(c);
@@ -48,6 +60,76 @@ const CharacterDisplay: React.FC<Props> = ({ user, lang, onUpdateClass, onUpdate
     setIsEditingStats(false);
   };
 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return;
+    
+    const file = event.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    setIsUploading(true);
+
+    try {
+        // 1. Upload to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+            .from('user-avatars')
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: true
+            });
+
+        if (uploadError) throw uploadError;
+
+        // 2. Get Public URL
+        const { data: { publicUrl } } = supabase.storage
+            .from('user-avatars')
+            .getPublicUrl(filePath);
+
+        // 3. Update User Profile
+        // Strategy: First update Auth Metadata (Reliable, no schema needed)
+        const { error: authError } = await supabase.auth.updateUser({
+            data: { avatar_url: publicUrl }
+        });
+
+        if (authError) throw authError;
+
+        // Then try to update Profiles table (for social features)
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ avatar_url: publicUrl })
+            .eq('id', user.id);
+
+        if (updateError) {
+             // If DB update fails, we warn but don't stop execution
+             console.error("Profile sync error:", updateError);
+             if (updateError.code === 'PGRST204') {
+                 alert("Avatar saved to account! Note: To make it visible to others in Guilds, you must add a text column 'avatar_url' to your 'profiles' table in Supabase.");
+             } else if (updateError.message && updateError.message.includes('row-level security')) {
+                 console.warn("RLS blocking profile update. Check policies.");
+             }
+        }
+
+        // 4. Update Local State
+        if (onUpdateAvatar) {
+            onUpdateAvatar(publicUrl);
+        }
+
+    } catch (error: any) {
+        console.error('Error uploading avatar:', error);
+        
+        if (error.message && error.message.includes('Bucket not found')) {
+            alert('Upload failed: Bucket "user-avatars" not found.\n\nPlease go to Supabase Dashboard -> Storage -> Create a new public bucket named "user-avatars".');
+        } else if (error.message && error.message.includes('row-level security')) {
+             alert('Upload failed: Storage RLS Policy violation.\n\nPlease go to Supabase Dashboard -> Storage -> Policies -> Allow INSERT/UPDATE for authenticated users.');
+        } else {
+             alert(`Error uploading avatar: ${error.message || 'Unknown error'}`);
+        }
+    } finally {
+        setIsUploading(false);
+    }
+  };
+
   return (
     <div className="w-full bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl relative">
       {/* Background/Banner */}
@@ -55,19 +137,44 @@ const CharacterDisplay: React.FC<Props> = ({ user, lang, onUpdateClass, onUpdate
         <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
         
         <div className="absolute bottom-4 left-4 flex items-end space-x-4 z-10 w-full pr-8">
-          <div className="w-24 h-24 rounded-full border-4 border-slate-800 bg-slate-700 overflow-hidden shadow-lg relative group-hover:scale-105 transition-transform duration-300">
-             <img 
-              src={`https://picsum.photos/seed/${user.username}/200/200`} 
-              alt="Avatar" 
-              className="w-full h-full object-cover"
-            />
+          {/* Avatar Container */}
+          <div className="relative group/avatar cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+             <div className="w-24 h-24 rounded-xl border-4 border-slate-800 bg-slate-950 overflow-hidden shadow-lg relative transition-transform duration-300 group-hover/avatar:scale-105">
+                <img 
+                    src={displayImage} 
+                    alt={currentEvolution.title} 
+                    className={`w-full h-full object-cover ${isUploading ? 'opacity-50' : ''}`}
+                />
+                {/* Upload Overlay */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity">
+                    <Camera className="w-8 h-8 text-white/80" />
+                </div>
+                {isUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+                    </div>
+                )}
+             </div>
+             <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*"
+                onChange={handleFileChange}
+             />
           </div>
+
           <div className="mb-2 flex-1">
-            <h2 className="text-2xl font-bold text-white tracking-wide flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-white tracking-wide flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 leading-tight">
               {user.username}
-              <span className="text-xs px-2 py-1 bg-amber-600 rounded text-slate-950 font-extrabold uppercase">
-                {t.lvl} {user.level}
-              </span>
+              <div className="flex gap-2">
+                <span className="text-xs px-2 py-0.5 bg-amber-600 rounded text-slate-950 font-extrabold uppercase">
+                    {t.lvl} {user.level}
+                </span>
+                <span className="text-xs px-2 py-0.5 bg-purple-600 rounded text-white font-bold uppercase tracking-wider border border-purple-400/50">
+                    {currentEvolution.title}
+                </span>
+              </div>
             </h2>
             
             {/* Clickable Class Area */}

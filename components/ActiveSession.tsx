@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WorkoutNode, UserProfile } from '../types';
 import { getWorkoutMotivation, getTechniqueTip } from '../services/geminiService';
-import { ArrowLeft, Timer, CheckCircle, Info, Bot, Trophy, Star, Sparkles, Users } from 'lucide-react';
+import { ArrowLeft, Timer, CheckCircle, Info, Bot, Trophy, Star, Sparkles, Users, Calculator } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 
 interface Props {
@@ -69,6 +69,16 @@ const ActiveSession: React.FC<Props> = ({ workout, user, lang, partnerName, onCo
 
   const handleClaimReward = () => {
     onComplete(workout.xpReward, workout.goldReward);
+  };
+
+  const calculateWeight = (ex: any) => {
+      if (ex.percent1rm && ex.targetStat && user.stats) {
+          const oneRM = user.stats[ex.targetStat] || 0;
+          if (oneRM > 0) {
+              return Math.round(oneRM * ex.percent1rm);
+          }
+      }
+      return ex.weight || 0;
   };
 
   const isFinished = completedExercises.size === workout.exercises.length;
@@ -178,6 +188,8 @@ const ActiveSession: React.FC<Props> = ({ workout, user, lang, partnerName, onCo
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
         {workout.exercises.map((ex) => {
           const isDone = completedExercises.has(ex.id);
+          const calculatedWeight = calculateWeight(ex);
+          
           return (
             <div 
               key={ex.id} 
@@ -190,10 +202,37 @@ const ActiveSession: React.FC<Props> = ({ workout, user, lang, partnerName, onCo
                   <h3 className={`text-lg font-bold ${isDone ? 'text-green-400' : 'text-slate-100'}`}>
                     {ex.name}
                   </h3>
-                  <p className="text-sm text-slate-400">
-                    {ex.sets} sets × {ex.reps} reps {ex.weight ? `@ ${ex.weight}kg` : ''}
+                  <p className="text-sm text-slate-400 mt-1">
+                    <span className="text-white font-mono">{ex.sets}</span> sets × <span className="text-white font-mono">{ex.reps}</span> reps
                   </p>
+                  {ex.customNote && <p className="text-xs text-amber-500 font-bold mt-1">{ex.customNote}</p>}
+                  
+                  {/* Weight Display Logic */}
+                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      {ex.percent1rm && ex.targetStat ? (
+                          <div className="flex items-center gap-2 bg-slate-800 px-2 py-1 rounded border border-slate-600">
+                             <Calculator className="w-3 h-3 text-amber-500" />
+                             <span className="text-xs text-amber-400 font-bold font-mono">
+                                {calculatedWeight > 0 ? `${calculatedWeight} kg` : `Needs 1RM`}
+                             </span>
+                             <span className="text-[10px] text-slate-500">
+                                ({ex.percent1rm * 100}%)
+                             </span>
+                          </div>
+                      ) : ex.weight ? (
+                          <div className="text-xs bg-slate-800 px-2 py-1 rounded border border-slate-600 text-slate-300 font-mono">
+                              @ {ex.weight} kg
+                          </div>
+                      ) : null}
+                      
+                      {ex.rpe && (
+                          <div className="text-xs bg-slate-800 px-2 py-1 rounded border border-slate-600 text-blue-400 font-bold">
+                              RPE {ex.rpe}
+                          </div>
+                      )}
+                  </div>
                 </div>
+
                 <button 
                   onClick={() => toggleExercise(ex.id)}
                   className={`p-2 rounded-full border-2 ${
