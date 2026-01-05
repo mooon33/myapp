@@ -1,19 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ClassType, UserProfile, Difficulty, Stats } from '../types';
-import { Ruler, Weight as WeightIcon, Sword, Activity, Target, ChevronRight, Check, Zap, Skull, Shield, Dumbbell } from 'lucide-react';
+import { Sword, Activity, Target, ChevronRight, Check, Shield, Skull, Camera, Loader2 } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
+import { supabase } from '../lib/supabaseClient';
 
 interface Props {
   user: UserProfile;
   lang: 'en' | 'ru';
-  onComplete: (data: { gender: 'male' | 'female' | 'other'; height: number; weight: number; class: ClassType; difficulty: Difficulty; stats: Stats }) => void;
+  onComplete: (data: { gender: 'male' | 'female' | 'other'; height: number; weight: number; class: ClassType; difficulty: Difficulty; stats: Stats; avatar_url?: string }) => void;
 }
 
 const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
-  const [height, setHeight] = useState<string>('');
-  const [weight, setWeight] = useState<string>('');
   
   // New Stats State
   const [squat, setSquat] = useState<string>('');
@@ -22,14 +21,20 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
 
   const [selectedClass, setSelectedClass] = useState<ClassType>(ClassType.WARRIOR);
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>(Difficulty.BEGINNER);
+  
+  // Avatar State
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(user.avatar_url);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const t = TRANSLATIONS[lang];
 
-  // Local translations for the new step if not in constants yet
   const localT = {
       strengthStats: lang === 'ru' ? 'Силовые показатели' : 'Strength Stats',
       strengthDesc: lang === 'ru' ? 'Введите ваши 1ПМ (максимум на 1 раз) для расчета программы.' : 'Enter your 1RM (One Rep Max) to calculate training loads.',
-      ifUnknown: lang === 'ru' ? 'Если не знаете, введите примерный вес на 5 повторений.' : 'If unknown, enter approximate weight for 5 reps.'
+      ifUnknown: lang === 'ru' ? 'Если не знаете, введите примерный вес на 5 повторений.' : 'If unknown, enter approximate weight for 5 reps.',
+      uploadPhoto: lang === 'ru' ? 'Загрузить фото' : 'Upload Photo',
+      chooseGender: lang === 'ru' ? 'Выберите пол' : 'Select Gender'
   };
 
   const CLASS_DESCRIPTIONS = {
@@ -60,10 +65,9 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
   };
 
   const handleNext = () => {
-    if (step === 1 && height && weight) {
+    if (step === 1) {
       setStep(2);
     } else if (step === 2) {
-      // Validate stats - allow 0 but ensure they are numbers
       setStep(3);
     } else if (step === 3) {
       setStep(4);
@@ -73,16 +77,47 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
   const handleSubmit = () => {
     onComplete({
       gender,
-      height: Number(height),
-      weight: Number(weight),
+      height: 175, // Default values since we removed input
+      weight: 75,  // Default values since we removed input
       class: selectedClass,
       difficulty: selectedDifficulty,
       stats: {
           squat_1rm: Number(squat) || 0,
           bench_1rm: Number(bench) || 0,
           deadlift_1rm: Number(deadlift) || 0
-      }
+      },
+      avatar_url: avatarUrl
     });
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return;
+    
+    const file = event.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    setIsUploading(true);
+
+    try {
+        const { error: uploadError } = await supabase.storage
+            .from('user-avatars')
+            .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('user-avatars')
+            .getPublicUrl(filePath);
+
+        setAvatarUrl(publicUrl);
+    } catch (error: any) {
+        console.error('Error uploading avatar:', error);
+        alert('Upload failed. Please try again.');
+    } finally {
+        setIsUploading(false);
+    }
   };
 
   const progressBarWidth = step === 1 ? 'w-1/4' : step === 2 ? 'w-2/4' : step === 3 ? 'w-3/4' : 'w-full';
@@ -105,8 +140,35 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
           
           {step === 1 && (
             <div className="space-y-6 animate-in slide-in-from-right duration-300">
+               {/* Avatar Upload */}
+               <div className="flex flex-col items-center gap-3">
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-24 h-24 rounded-full bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center cursor-pointer hover:border-amber-500 hover:bg-slate-700 transition-all relative overflow-hidden"
+                  >
+                     {avatarUrl ? (
+                         <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                     ) : (
+                         <Camera className="w-8 h-8 text-slate-500" />
+                     )}
+                     {isUploading && (
+                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                             <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+                         </div>
+                     )}
+                  </div>
+                  <span className="text-xs text-amber-500 font-bold uppercase tracking-wider">{localT.uploadPhoto}</span>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={handleFileChange}
+                 />
+               </div>
+
                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">{t.gender}</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">{localT.chooseGender}</label>
                   <div className="grid grid-cols-3 gap-3">
                     {['male', 'female', 'other'].map((g) => (
                       <button
@@ -124,46 +186,16 @@ const OnboardingView: React.FC<Props> = ({ user, lang, onComplete }) => {
                   </div>
                </div>
 
-               <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.height}</label>
-                    <div className="relative">
-                       <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                       <input 
-                          type="number" 
-                          value={height}
-                          onChange={(e) => setHeight(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-10 pr-3 text-white focus:border-amber-500 focus:outline-none"
-                          placeholder="175"
-                       />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t.weight}</label>
-                    <div className="relative">
-                       <WeightIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                       <input 
-                          type="number" 
-                          value={weight}
-                          onChange={(e) => setWeight(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-10 pr-3 text-white focus:border-amber-500 focus:outline-none"
-                          placeholder="70"
-                       />
-                    </div>
-                  </div>
-               </div>
-
                <button 
                   onClick={handleNext}
-                  disabled={!height || !weight}
-                  className="w-full py-4 mt-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 mt-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
                >
                   {t.nextStep} <ChevronRight className="w-5 h-5" />
                </button>
             </div>
           )}
 
-          {/* STEP 2: STRENGTH STATS (New Step) */}
+          {/* STEP 2: STRENGTH STATS */}
           {step === 2 && (
              <div className="space-y-4 animate-in slide-in-from-right duration-300">
                 <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800 mb-2">

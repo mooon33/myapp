@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Users, Shield, Zap, Sword, Crown, Plus, Search, LogOut, LogIn, X, Send, MessageSquare, AlertCircle, UserPlus, Check, Trash2, UserX, Swords, ChevronRight, PenTool, DoorOpen, Loader2, Trophy } from 'lucide-react';
 import { Guild, ChatMessage, Friend, ClassType, UserProfile } from '../types';
@@ -138,9 +139,27 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
         { event: 'INSERT', schema: 'public', table: 'guild_messages', filter: `guild_id=eq.${userGuildId}` },
         (payload) => {
           setMessages((current) => {
-             // Avoid duplicates from optimistic updates
-             if (current.some(m => m.id === payload.new.id)) return current;
-             return [...current, payload.new as ChatMessage];
+             const newMsg = payload.new as ChatMessage;
+
+             // 1. Check strict duplicate (if ID already exists)
+             if (current.some(m => m.id === newMsg.id)) return current;
+
+             // 2. Check for optimistic duplicate
+             // Find a temp message by this user with the same content
+             const tempMatchIndex = current.findIndex(m =>
+                 m.id.startsWith('temp-') &&
+                 m.content === newMsg.content &&
+                 m.user_id === newMsg.user_id
+             );
+
+             if (tempMatchIndex !== -1) {
+                 // Replace the temp message with the real one
+                 const updated = [...current];
+                 updated[tempMatchIndex] = newMsg;
+                 return updated;
+             }
+
+             return [...current, newMsg];
           });
         }
       )
@@ -213,12 +232,12 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
         if (error) {
             console.error("Error sending message:", error);
             setMessages(prev => prev.filter(m => m.id !== tempId)); // Rollback
-            setChatError("Failed to send. Please try refreshing.");
+            setChatError(t.sendError);
         }
     } catch (e) {
         console.error("Network error:", e);
         setMessages(prev => prev.filter(m => m.id !== tempId));
-        setChatError("Network error.");
+        setChatError(t.networkError);
     }
   };
 
@@ -294,17 +313,17 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
         if (error || !data) {
             setFriendSearchError(t.userNotFound);
         } else if (data.id === currentUserId) {
-            setFriendSearchError("You cannot add yourself.");
+            setFriendSearchError(t.selfAddError);
         } else {
             const existing = friends.find(f => f.friendId === data.id);
             if (existing) {
-                setFriendSearchError(existing.status === 'accepted' ? "Already friends." : "Request pending.");
+                setFriendSearchError(existing.status === 'accepted' ? t.alreadyFriends : t.requestPending);
             } else {
                 setFoundUser(data as UserProfile);
             }
         }
     } catch (e) {
-        setFriendSearchError("Error searching user.");
+        setFriendSearchError(t.userNotFound);
     } finally {
         setIsFriendSearchLoading(false);
     }
@@ -325,7 +344,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
           fetchFriends();
       } catch (e) {
           console.error(e);
-          setFriendSearchError("Failed to send request.");
+          setFriendSearchError(t.sendError);
       }
   };
 
@@ -428,7 +447,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
               <div className="p-4 space-y-3">
                   {friends.length === 0 ? (
                       <div className="text-center text-slate-500 py-10">
-                        <p>No friends found. Add some to get started!</p>
+                        <p>{t.noFriends}</p>
                       </div>
                   ) : (
                       friends.map(friend => (
@@ -856,7 +875,7 @@ const GuildsView: React.FC<Props> = ({ guilds, userGuildId, username, currentUse
                  
                  <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-y-auto min-h-[100px] max-h-[150px] p-2 space-y-1">
                     {!isLoadingMembers && guildMembers.length === 0 ? (
-                        <div className="text-center text-slate-600 text-xs py-4">No members info available</div>
+                        <div className="text-center text-slate-600 text-xs py-4">{t.noMembers}</div>
                     ) : (
                         guildMembers.map((member, index) => (
                            <div key={member.id} className="flex items-center gap-3 p-2 rounded hover:bg-slate-900 transition-colors">

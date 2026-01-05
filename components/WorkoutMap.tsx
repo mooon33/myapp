@@ -22,6 +22,12 @@ const WorkoutMap: React.FC<Props> = ({ nodes, onNodeClick }) => {
         let textClass = 'text-slate-500';
         let isClickable = false;
 
+        // Flag to identify which node to scroll to (the first available one)
+        // If we have completed nodes, the active one is the first 'available'. 
+        // If all completed, maybe the last one.
+        // We will assign ID 'active-node' to the first node that is 'available'.
+        let domId = undefined;
+
         if (node.status === 'completed') {
           StatusIcon = Check;
           bgClass = 'bg-amber-500 border-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.4)]';
@@ -34,11 +40,17 @@ const WorkoutMap: React.FC<Props> = ({ nodes, onNodeClick }) => {
             : 'bg-violet-600 border-violet-400 shadow-[0_0_15px_rgba(139,92,246,0.4)]';
           textClass = 'text-white';
           isClickable = true;
+          // Assign ID for scrolling
+          // Note: Since map iterates, if multiple are available (unlikely in linear), this might duplicate IDs. 
+          // But our logic usually has one active frontier. 
+          // To be safe, we can rely on parent checking or just add it here if it's the *last* available or just available.
+          domId = 'active-node'; 
         }
 
         return (
           <div 
-            key={node.id} 
+            key={node.id}
+            id={domId}
             className={`relative z-10 my-6 ${offsetClass} transition-transform duration-300 hover:scale-110`}
           >
             <button

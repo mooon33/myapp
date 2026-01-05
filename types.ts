@@ -8,9 +8,7 @@ export enum ClassType {
 export enum TrainingPath {
   BODYBUILDING = 'Bodybuilding',
   POWERLIFTING = 'Powerlifting',
-  CROSSFIT = 'Crossfit',
-  HOME = 'Home Workout',
-  STRETCHING = 'Yoga & Stretching'
+  CUSTOM = 'AI Custom Program'
 }
 
 export enum Difficulty {
@@ -102,9 +100,12 @@ export interface Exercise {
 
 export interface WorkoutLog {
   id: string;
-  program_id: string;
+  user_id: string;
+  workout_title: string;
   completed_at: string;
-  total_xp_earned: number;
+  xp_earned: number;
+  gold_earned: number;
+  exercises?: Exercise[]; // Added detailed exercise log
 }
 
 export interface Guild {

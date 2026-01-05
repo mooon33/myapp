@@ -1,6 +1,4 @@
 
-
-
 import { UserProfile, ClassType, WorkoutNode, InventoryItem, Guild, ChatMessage, ShopItem, Friend, SpriteMilestone, TrainingPath, Difficulty } from './types';
 
 export const TRANSLATIONS = {
@@ -8,24 +6,51 @@ export const TRANSLATIONS = {
     // Navigation
     map: 'Map',
     social: 'Social',
-    avatar: 'Avatar', // Changed from Evolve
+    avatar: 'Avatar',
     shop: 'Shop',
     hero: 'Hero',
+    history: 'History',
     
     // Auth & Onboarding
     step3: 'Combat Readiness',
-    selectPath: 'Discipline',
-    bodybuilding: 'Bodybuilding',
-    powerlifting: 'Powerlifting',
-    crossfit: 'CrossFit',
-    homeWorkout: 'Home',
-    stretching: 'Yoga',
-    difficulty: 'Difficulty',
-    beginner: 'Novice (Beginner)',
-    intermediate: 'Adept (Intermediate)',
-    advanced: 'Elite (Advanced)',
+    selectPath: 'Select Discipline',
+    bodybuilding: 'Bodybuilding (Hypertrophy)',
+    powerlifting: 'Powerlifting (Strength)',
+    customWorkout: 'AI Custom Program',
     
-    // Friends & Social
+    // Custom AI
+    aiPromptPlaceholder: 'e.g., "Leg day focusing on glutes" or "30 min intense cardio"',
+    generateWorkout: 'Generate Workout',
+    generating: 'Oracle is divining...',
+    swapExercise: 'Swap',
+    similarExercises: 'Alternative Exercises',
+    selectReplacement: 'Select Replacement',
+    noSubstitutes: 'No substitutes found.',
+    needs1rm: 'Needs 1RM',
+
+    // History
+    noHistory: 'No battles recorded yet.',
+    completedOn: 'Completed on',
+    totalWorkouts: 'Total Raids',
+    viewDetails: 'View Details',
+    workoutDetails: 'Workout Log',
+    noDetails: 'Details not available for this log.',
+
+    // RPE
+    rpeTitle: 'RPE Scale (Rate of Perceived Exertion)',
+    rpe10: '10 - Max Effort (Failure)',
+    rpe9: '9 - 1 Rep in Reserve',
+    rpe8: '8 - 2 Reps in Reserve',
+    rpe7: '7 - Move weight quickly',
+    rpeDesc: 'RPE helps you choose the right weight. 10 is impossible to do more, 8 means you could do 2 more reps.',
+
+    // General
+    difficulty: 'Difficulty',
+    beginner: 'Novice',
+    intermediate: 'Adept',
+    advanced: 'Elite',
+    
+    // ... existing translations ...
     removeFriend: 'Remove Friend',
     acceptFriend: 'Accept',
     declineFriend: 'Decline',
@@ -39,7 +64,6 @@ export const TRANSLATIONS = {
     partnerTraining: 'Partner Training',
     partnerProgress: 'Partner Progress',
 
-    // ... existing translations ...
     checkScrolls: 'Check your Scrolls',
     verificationSent: 'We have sent a verification rune to',
     confirmEmail: 'Please confirm your email to begin your journey.',
@@ -137,8 +161,6 @@ export const TRANSLATIONS = {
     gotIt: 'Got it',
     completeQuest: 'Complete Quest',
     completed: 'Completed',
-    
-    // Avatar / Evolution specific
     avatarTitle: 'Hero Avatar',
     bodyProgress: 'Body Evolution',
     nextForm: 'Next Form',
@@ -146,7 +168,6 @@ export const TRANSLATIONS = {
     inventory: 'Inventory',
     equipped: 'Equipped',
     emptySlot: 'Empty',
-    
     equipment: 'Equipment',
     equip: 'Equip',
     unequip: 'Unequip',
@@ -161,36 +182,67 @@ export const TRANSLATIONS = {
     selectLanguage: 'Select Language',
     english: 'English',
     russian: 'Russian',
-
-    // Missing keys for EvolutionView
     evolutionPath: 'Evolution Path',
     evolutionDesc: 'Transform your physique as you level up.',
     unlocked: 'Unlocked',
     nextMilestone: 'Next Milestone',
     moreComing: 'More Coming Soon',
+    noFriends: 'No friends found. Add some to get started!',
+    noMembers: 'No members info available',
+    selfAddError: 'You cannot add yourself.',
+    alreadyFriends: 'Already friends.',
+    requestPending: 'Request pending.',
+    networkError: 'Network error.',
+    sendError: 'Failed to send.',
   },
   ru: {
     // Navigation
     map: 'Карта',
     social: 'Союз',
-    avatar: 'Аватар', // Changed from Развитие
+    avatar: 'Аватар',
     shop: 'Магазин',
     hero: 'Герой',
+    history: 'История',
 
     // Auth & Onboarding
     step3: 'Боевая готовность',
-    selectPath: 'Дисциплина',
-    bodybuilding: 'Бодибилдинг',
-    powerlifting: 'Пауэрлифтинг',
-    crossfit: 'Кроссфит',
-    homeWorkout: 'Дома',
-    stretching: 'Йога',
+    selectPath: 'Выберите путь',
+    bodybuilding: 'Бодибилдинг (Гипертрофия)',
+    powerlifting: 'Пауэрлифтинг (Сила)',
+    customWorkout: 'ИИ Тренировка',
+    
+    // Custom AI
+    aiPromptPlaceholder: 'Например: "День ног с акцентом на ягодицы" или "30 минут кардио"',
+    generateWorkout: 'Создать Тренировку',
+    generating: 'Оракул предсказывает...',
+    swapExercise: 'Заменить',
+    similarExercises: 'Похожие упражнения',
+    selectReplacement: 'Выберите замену',
+    noSubstitutes: 'Замены не найдены.',
+    needs1rm: 'Нужен 1ПМ',
+
+    // History
+    noHistory: 'Битв пока не зафиксировано.',
+    completedOn: 'Завершено',
+    totalWorkouts: 'Всего рейдов',
+    viewDetails: 'Детали',
+    workoutDetails: 'Журнал Тренировки',
+    noDetails: 'Детали недоступны для этой записи.',
+
+    // RPE
+    rpeTitle: 'Шкала RPE (Уровень Усилий)',
+    rpe10: '10 - Отказ (Максимум)',
+    rpe9: '9 - 1 повтор в запасе',
+    rpe8: '8 - 2 повтора в запасе',
+    rpe7: '7 - Тяжело, но быстро',
+    rpeDesc: 'RPE помогает выбрать вес. 10 - больше не сделать, 8 - можно сделать еще 2 раза.',
+
     difficulty: 'Сложность',
     beginner: 'Новичок',
     intermediate: 'Любитель',
     advanced: 'Элита',
 
-    // Friends & Social
+    // ... existing translations ...
     removeFriend: 'Удалить друга',
     acceptFriend: 'Принять',
     declineFriend: 'Отклонить',
@@ -204,7 +256,6 @@ export const TRANSLATIONS = {
     partnerTraining: 'Парная тренировка',
     partnerProgress: 'Прогресс партнера',
 
-    // ... existing translations ...
     checkScrolls: 'Проверьте Свитки',
     verificationSent: 'Мы отправили руну подтверждения на',
     confirmEmail: 'Пожалуйста, подтвердите email, чтобы начать путь.',
@@ -302,8 +353,6 @@ export const TRANSLATIONS = {
     gotIt: 'Понятно',
     completeQuest: 'Завершить Квест',
     completed: 'Выполнено',
-    
-    // Avatar / Evolution specific
     avatarTitle: 'Аватар Героя',
     bodyProgress: 'Эволюция Тела',
     nextForm: 'Следующая Форма',
@@ -311,7 +360,6 @@ export const TRANSLATIONS = {
     inventory: 'Инвентарь',
     equipped: 'Надето',
     emptySlot: 'Пусто',
-
     equipment: 'Снаряжение',
     equip: 'Надеть',
     unequip: 'Снять',
@@ -326,13 +374,18 @@ export const TRANSLATIONS = {
     selectLanguage: 'Выберите Язык',
     english: 'Английский',
     russian: 'Русский',
-
-    // Missing keys for EvolutionView
     evolutionPath: 'Путь Эволюции',
     evolutionDesc: 'Изменяйте свое тело по мере повышения уровня.',
     unlocked: 'Открыто',
     nextMilestone: 'Следующая цель',
     moreComing: 'Скоро будет больше',
+    noFriends: 'Друзей пока нет. Добавьте кого-нибудь!',
+    noMembers: 'Информация об участниках недоступна',
+    selfAddError: 'Нельзя добавить самого себя.',
+    alreadyFriends: 'Вы уже друзья.',
+    requestPending: 'Заявка уже отправлена.',
+    networkError: 'Ошибка сети.',
+    sendError: 'Ошибка отправки.',
   }
 };
 
@@ -358,15 +411,13 @@ export const MOCK_USER: UserProfile = {
   },
   streak: 12,
   guildId: null,
-  completedWorkouts: [], // Added
+  completedWorkouts: [], 
 };
-
-// ... keep inventory and shop items as they were ...
 
 export const MOCK_INVENTORY: InventoryItem[] = [
   {
     id: 'i-1',
-    name: 'Rusty Dumbbell',
+    name: 'Ржавая Гантель',
     type: 'weapon',
     rarity: 'common',
     statBonus: { str: 2 },
@@ -375,7 +426,7 @@ export const MOCK_INVENTORY: InventoryItem[] = [
   },
   {
     id: 'i-2',
-    name: 'Sweatband of Focus',
+    name: 'Повязка Фокуса',
     type: 'accessory',
     rarity: 'rare',
     statBonus: { will: 3 },
@@ -384,7 +435,7 @@ export const MOCK_INVENTORY: InventoryItem[] = [
   },
   {
     id: 'i-3',
-    name: 'Canvas Sneakers',
+    name: 'Старые Кеды',
     type: 'armor',
     rarity: 'common',
     statBonus: { sta: 1 },
@@ -396,227 +447,216 @@ export const MOCK_INVENTORY: InventoryItem[] = [
 export const MOCK_SHOP_ITEMS: ShopItem[] = [
   {
     id: 's-1',
-    name: 'Protein Potion',
+    name: 'Протеиновое Зелье',
     type: 'consumable',
     rarity: 'common',
     price: 50,
     minLevel: 1,
-    description: 'Instantly restores energy and boosts recovery.',
+    description: 'Мгновенно восстанавливает энергию и ускоряет восстановление.',
     image_url: 'https://picsum.photos/seed/potion/100/100',
   },
   {
     id: 's-4',
-    name: 'Chalk of Grip',
+    name: 'Магнезия Хвата',
     type: 'consumable',
     rarity: 'common',
     price: 25,
     minLevel: 1,
-    description: 'Never let go. Increases grip strength for one session.',
+    description: 'Больше не соскользнет. Увеличивает силу хвата на одну сессию.',
     image_url: 'https://picsum.photos/seed/chalk/100/100',
   },
   {
     id: 's-2',
-    name: 'Iron Belt',
+    name: 'Железный Пояс',
     type: 'accessory',
     rarity: 'rare',
     price: 350,
     minLevel: 5,
     statBonus: { str: 5 },
-    description: 'Increases core stability. Adds +5 STR.',
+    description: 'Укрепляет кор. Добавляет +5 к Силе.',
     image_url: 'https://picsum.photos/seed/belt/100/100',
   },
   {
     id: 's-3',
-    name: 'Berserker Wraps',
+    name: 'Напульсники Берсерка',
     type: 'weapon',
     rarity: 'epic',
     price: 800,
     minLevel: 10,
     statBonus: { will: 8, str: 3 },
-    description: 'Wrist wraps infused with ancient rage.',
+    description: 'Напульсники, пропитанные древней яростью.',
     image_url: 'https://picsum.photos/seed/wraps/100/100',
   },
   {
     id: 's-5',
-    name: 'Golden Dumbbell',
+    name: 'Золотая Гантель',
     type: 'weapon',
     rarity: 'legendary',
     price: 2500,
     minLevel: 20,
     statBonus: { str: 15 },
-    description: 'Forged in the heart of a dying star.',
+    description: 'Выкована в сердце умирающей звезды.',
     image_url: 'https://picsum.photos/seed/golddumb/100/100',
   },
 ];
 
-// --- CAMPAIGN MAPS FOR DIFFERENT PATHS ---
+// --- EXTENDED CAMPAIGN MAPS (4 Weeks / 12 Workouts) ---
 
-const BODYBUILDING_MAP: WorkoutNode[] = [
-    {
-      id: 'bb-1', title: 'Hypertrophy Basics', description: 'Focus on time under tension.',
-      type: 'story', status: 'completed', xpReward: 100, goldReward: 50, position: { x: 50, y: 10 }, exercises: [], chapter: 1,
-    },
-    {
-      id: 'bb-2', title: 'Chest Day Pump', description: 'Volume bench press and flys.',
-      type: 'workout', status: 'available', xpReward: 200, goldReward: 100, position: { x: 30, y: 30 }, 
-      exercises: [{ id: 'ex-bb-1', name: 'Bench Press', sets: 4, reps: 10, weight: 60 }, { id: 'ex-bb-2', name: 'Dumbbell Flys', sets: 3, reps: 15 }], chapter: 1,
-    },
-    {
-      id: 'bb-3', title: 'The Leg Sculptor', description: 'High reps for quad definition.',
-      type: 'workout', status: 'locked', xpReward: 300, goldReward: 150, position: { x: 70, y: 50 }, exercises: [], chapter: 1,
-    }
-];
+const BODYBUILDING_MAP: WorkoutNode[] = [];
+const POWERLIFTING_MAP: WorkoutNode[] = [];
 
-const POWERLIFTING_MAP: WorkoutNode[] = [
-    {
-      id: 'pl-1', title: 'Strength Foundation', description: 'Learning to brace and breathe.',
-      type: 'story', status: 'completed', xpReward: 100, goldReward: 50, position: { x: 50, y: 10 }, exercises: [], chapter: 1,
-    },
-    {
-      id: 'pl-2', title: 'Heavy Squat Session', description: 'Low reps, high intensity.',
-      type: 'workout', status: 'available', xpReward: 250, goldReward: 120, position: { x: 50, y: 40 }, 
-      exercises: [
-          { 
-              id: 'ex-pl-1', 
-              name: 'Low Bar Squat', 
-              sets: 5, 
-              reps: 5, 
-              percent1rm: 0.75, // 75% of 1RM
-              targetStat: 'squat_1rm' 
-          },
-          {
-              id: 'ex-pl-2',
-              name: 'Pause Squat',
-              sets: 3,
-              reps: 4,
-              rpe: 7
-          }
-      ], 
-      chapter: 1,
-    }
-];
+// Helper to generate positions
+const getPos = (week: number, day: number) => {
+    const baseX = day === 1 ? 50 : day === 2 ? 25 : 75;
+    const baseY = (week - 1) * 120 + (day * 30);
+    return { x: baseX, y: baseY };
+};
 
-const CROSSFIT_MAP: WorkoutNode[] = [
-    {
-      id: 'cf-1', title: 'The Box Entrance', description: 'Metcon introduction.',
-      type: 'story', status: 'completed', xpReward: 100, goldReward: 50, position: { x: 50, y: 10 }, exercises: [], chapter: 1,
-    },
-    {
-      id: 'cf-2', title: 'Fran-ish', description: 'Thrusters and pullups against the clock.',
-      type: 'workout', status: 'available', xpReward: 300, goldReward: 100, position: { x: 40, y: 40 }, 
-      exercises: [{ id: 'ex-cf-1', name: 'Thrusters', sets: 3, reps: 21 }, { id: 'ex-cf-2', name: 'Pullups', sets: 3, reps: 21 }], chapter: 1,
-    }
-];
+// --- BODYBUILDING GENERATION (Upper/Lower/Full) ---
+for (let w = 1; w <= 4; w++) {
+    const isDeload = w === 4;
+    const xpBase = 150 + (w * 10);
+    const goldBase = 50 + (w * 5);
+    
+    // Day 1: Upper
+    BODYBUILDING_MAP.push({
+        id: `bb-w${w}-d1`, 
+        title: `Неделя ${w}: Верх тела`, 
+        description: isDeload ? 'Легкая тренировка, восстановление.' : 'Акцент на гипертрофию.',
+        type: 'workout', status: w === 1 ? 'available' : 'locked', 
+        xpReward: isDeload ? 100 : xpBase, goldReward: goldBase, 
+        position: getPos(w, 1), chapter: w,
+        exercises: [
+            { id: `bb-w${w}-d1-1`, name: 'Жим лежа (наклон)', sets: 3, reps: isDeload ? '12' : '8-12', rpe: isDeload ? 6 : 8 },
+            { id: `bb-w${w}-d1-2`, name: 'Тяга верхнего блока', sets: 3, reps: '10-15', rpe: isDeload ? 6 : 8 },
+            { id: `bb-w${w}-d1-3`, name: 'Армейский жим', sets: 3, reps: '10-12', rpe: isDeload ? 6 : 8 },
+            { id: `bb-w${w}-d1-4`, name: 'Сведение рук (кроссовер)', sets: 3, reps: '15-20', rpe: 9 },
+            { id: `bb-w${w}-d1-5`, name: 'Сгибание на бицепс', sets: 3, reps: '12-15', rpe: 9 }
+        ]
+    });
 
-const HOME_MAP: WorkoutNode[] = [
-    {
-      id: 'hw-1', title: 'Living Room Legend', description: 'No gear needed.',
-      type: 'story', status: 'completed', xpReward: 80, goldReward: 40, position: { x: 50, y: 10 }, exercises: [], chapter: 1,
-    },
-    {
-      id: 'hw-2', title: 'Pushup Mastery', description: 'Different variations of pushups.',
-      type: 'workout', status: 'available', xpReward: 150, goldReward: 60, position: { x: 50, y: 30 }, 
-      exercises: [{ id: 'ex-hw-1', name: 'Standard Pushups', sets: 3, reps: 15 }, { id: 'ex-hw-2', name: 'Diamond Pushups', sets: 3, reps: 10 }], chapter: 1,
-    }
-];
+    // Day 2: Lower
+    BODYBUILDING_MAP.push({
+        id: `bb-w${w}-d2`, 
+        title: `Неделя ${w}: Низ тела`, 
+        description: 'Рост ног.',
+        type: 'workout', status: 'locked', 
+        xpReward: xpBase, goldReward: goldBase, 
+        position: getPos(w, 2), chapter: w,
+        exercises: [
+            { id: `bb-w${w}-d2-1`, name: 'Приседания', sets: 3, reps: '8-10', rpe: isDeload ? 6 : 8 },
+            { id: `bb-w${w}-d2-2`, name: 'Румынская тяга', sets: 3, reps: '10-12', rpe: isDeload ? 6 : 8 },
+            { id: `bb-w${w}-d2-3`, name: 'Жим ногами', sets: 3, reps: '12-15', rpe: 8 },
+            { id: `bb-w${w}-d2-4`, name: 'Подъем на носки', sets: 4, reps: '15-20', rpe: 9 },
+            { id: `bb-w${w}-d2-5`, name: 'Подъем ног в висе', sets: 3, reps: '15', rpe: 8 }
+        ]
+    });
 
-const STRETCHING_MAP: WorkoutNode[] = [
-    {
-      id: 'st-1', title: 'Morning Flow', description: 'Wake up the spine.',
-      type: 'story', status: 'completed', xpReward: 50, goldReward: 20, position: { x: 50, y: 10 }, exercises: [], chapter: 1,
-    },
-    {
-      id: 'st-2', title: 'Hip Opener', description: 'Deep stretches for hips.',
-      type: 'workout', status: 'available', xpReward: 100, goldReward: 50, position: { x: 50, y: 30 }, 
-      exercises: [{ id: 'ex-st-1', name: 'Pigeon Pose', sets: 2, reps: 60 }, { id: 'ex-st-2', name: 'Lunge Stretch', sets: 2, reps: 60 }], chapter: 1,
-    }
-];
+    // Day 3: Full Body / Weak Points
+    BODYBUILDING_MAP.push({
+        id: `bb-w${w}-d3`, 
+        title: `Неделя ${w}: Все тело`, 
+        description: isDeload ? 'Активный отдых.' : 'Высокая интенсивность.',
+        type: w === 4 ? 'boss' : 'workout', status: 'locked', 
+        xpReward: xpBase + 50, goldReward: goldBase + 20, 
+        position: getPos(w, 3), chapter: w,
+        exercises: [
+            { id: `bb-w${w}-d3-1`, name: 'Становая тяга', sets: 3, reps: '6-8', rpe: isDeload ? 5 : 8 },
+            { id: `bb-w${w}-d3-2`, name: 'Отжимания на брусьях', sets: 3, reps: 'Отказ', customNote: 'Максимум' },
+            { id: `bb-w${w}-d3-3`, name: 'Подтягивания', sets: 3, reps: 'Отказ', customNote: 'Максимум' },
+            { id: `bb-w${w}-d3-4`, name: 'Махи в стороны', sets: 4, reps: '15-20', customNote: 'Дроп-сет' },
+            { id: `bb-w${w}-d3-5`, name: 'Разгибания на трицепс', sets: 3, reps: '12-15', rpe: 9 }
+        ]
+    });
+}
+
+// --- POWERLIFTING GENERATION (SBD Focus + Accessories) ---
+for (let w = 1; w <= 4; w++) {
+    const isPeak = w === 4;
+    const xpBase = 160 + (w * 10);
+    const goldBase = 60 + (w * 5);
+
+    // Day 1: Squat Focus
+    POWERLIFTING_MAP.push({
+        id: `pl-w${w}-d1`, 
+        title: `Неделя ${w}: Присед`, 
+        description: 'Базовая сила ног.',
+        type: 'workout', status: w === 1 ? 'available' : 'locked', 
+        xpReward: xpBase, goldReward: goldBase, 
+        position: getPos(w, 1), chapter: w,
+        exercises: [
+            { id: `pl-w${w}-d1-1`, name: 'Соревновательный Присед', sets: isPeak ? 3 : 5, reps: isPeak ? 1 : 5, percent1rm: isPeak ? 0.90 : 0.70, targetStat: 'squat_1rm' },
+            { id: `pl-w${w}-d1-2`, name: 'Жим лежа с паузой', sets: 4, reps: 4, rpe: 7 },
+            { id: `pl-w${w}-d1-3`, name: 'Сплит-присед', sets: 3, reps: 8, rpe: 7 },
+            { id: `pl-w${w}-d1-4`, name: 'Планка', sets: 3, reps: '60с', rpe: 8 }
+        ]
+    });
+
+    // Day 2: Bench Focus
+    POWERLIFTING_MAP.push({
+        id: `pl-w${w}-d2`, 
+        title: `Неделя ${w}: Жим`, 
+        description: 'Сила грудных и трицепса.',
+        type: 'workout', status: 'locked', 
+        xpReward: xpBase, goldReward: goldBase, 
+        position: getPos(w, 2), chapter: w,
+        exercises: [
+            { id: `pl-w${w}-d2-1`, name: 'Соревновательный Жим', sets: isPeak ? 3 : 5, reps: isPeak ? 1 : 5, percent1rm: isPeak ? 0.92 : 0.70, targetStat: 'bench_1rm' },
+            { id: `pl-w${w}-d2-2`, name: 'Жим узким хватом', sets: 3, reps: 8, rpe: 8 },
+            { id: `pl-w${w}-d2-3`, name: 'Тяга в наклоне', sets: 4, reps: 8, rpe: 8 },
+            { id: `pl-w${w}-d2-4`, name: 'Лицевая тяга', sets: 3, reps: 15, rpe: 8 },
+            { id: `pl-w${w}-d2-5`, name: 'Разгибание на трицепс', sets: 3, reps: 12, rpe: 9 }
+        ]
+    });
+
+    // Day 3: Deadlift Focus
+    POWERLIFTING_MAP.push({
+        id: `pl-w${w}-d3`, 
+        title: `Неделя ${w}: Тяга`, 
+        description: 'Становая тяга и спина.',
+        type: isPeak ? 'boss' : 'workout', status: 'locked', 
+        xpReward: xpBase + 40, goldReward: goldBase + 30, 
+        position: getPos(w, 3), chapter: w,
+        exercises: [
+            { id: `pl-w${w}-d3-1`, name: 'Становая Тяга', sets: isPeak ? 2 : 5, reps: isPeak ? 1 : 3, percent1rm: isPeak ? 0.90 : 0.75, targetStat: 'deadlift_1rm' },
+            { id: `pl-w${w}-d3-2`, name: 'Фронтальный присед', sets: 3, reps: 6, rpe: 7 },
+            { id: `pl-w${w}-d3-3`, name: 'Подтягивания', sets: 3, reps: 'Макс', rpe: 9 },
+            { id: `pl-w${w}-d3-4`, name: 'Сгибание ног', sets: 3, reps: 12, rpe: 8 },
+            { id: `pl-w${w}-d3-5`, name: 'Бицепс', sets: 3, reps: 10, rpe: 8 }
+        ]
+    });
+}
+
+const CUSTOM_MAP: WorkoutNode[] = [];
 
 export const CAMPAIGN_DATA: Record<TrainingPath, WorkoutNode[]> = {
     [TrainingPath.BODYBUILDING]: BODYBUILDING_MAP,
     [TrainingPath.POWERLIFTING]: POWERLIFTING_MAP,
-    [TrainingPath.CROSSFIT]: CROSSFIT_MAP,
-    [TrainingPath.HOME]: HOME_MAP,
-    [TrainingPath.STRETCHING]: STRETCHING_MAP,
+    [TrainingPath.CUSTOM]: CUSTOM_MAP,
 };
-
-// Fallback map
-export const CAMPAIGN_MAP = BODYBUILDING_MAP;
 
 export const MOCK_GUILDS: Guild[] = [
   { 
-    id: 'g-1', 
-    name: 'Iron Legion', 
-    description: 'We lift heavy things and never skip leg day.', 
-    members: 42, 
-    maxMembers: 50, 
-    totalXp: 150000, 
-    rank: 1, 
-    icon: 'shield' 
+    id: 'g-1', name: 'Железный Легион', description: 'Мы поднимаем тяжести и никогда не пропускаем день ног.', 
+    members: 42, maxMembers: 50, totalXp: 150000, rank: 1, icon: 'shield' 
   },
   { 
-    id: 'g-2', 
-    name: 'Morning Crew', 
-    description: '5AM workouts only. Discipline is key.', 
-    members: 10, 
-    maxMembers: 20, 
-    totalXp: 112000, 
-    rank: 2, 
-    icon: 'zap' 
-  },
-  { 
-    id: 'g-3', 
-    name: 'Cardio Kings', 
-    description: 'Run until you drop. Stamina builds character.', 
-    members: 28, 
-    maxMembers: 50, 
-    totalXp: 98000, 
-    rank: 3, 
-    icon: 'sword' 
-  },
-  { 
-    id: 'g-4', 
-    name: 'Squat Squad', 
-    description: 'Deep squats for deep thoughts.', 
-    members: 33, 
-    maxMembers: 40, 
-    totalXp: 88000, 
-    rank: 4, 
-    icon: 'crown' 
-  },
-  { 
-    id: 'g-5', 
-    name: 'Flex & Chill', 
-    description: 'Casual lifting and post-workout coffee.', 
-    members: 15, 
-    maxMembers: 30, 
-    totalXp: 45000, 
-    rank: 5, 
-    icon: 'shield' 
+    id: 'g-2', name: 'Утренняя Банда', description: 'Только тренировки в 5 утра. Дисциплина - ключ к успеху.', 
+    members: 10, maxMembers: 20, totalXp: 112000, rank: 2, icon: 'zap' 
   },
 ];
 
-// Replaced with empty default, will load from DB
-export const MOCK_CHAT_MESSAGES: ChatMessage[] = [];
-
-// Replaced with empty default, will load from DB
-export const MOCK_FRIENDS: Friend[] = [];
-
-// REPLACE THESE URLs WITH YOUR LOCAL ASSETS OR HOSTED IMAGES
 export const SPRITE_EVOLUTION: SpriteMilestone[] = [
   { 
-    level: 1, 
-    title: 'Beginner', 
-    imageUrl: 'https://ygvpycmjsrfxismnszir.supabase.co/storage/v1/object/public/avatars/1.png' // Placeholder for body_stage_1.png
+    level: 1, title: 'Новичок', 
+    imageUrl: 'https://ygvpycmjsrfxismnszir.supabase.co/storage/v1/object/public/avatars/1.png'
   },
   { 
-    level: 10, 
-    title: 'Athletic', 
-    imageUrl: 'https://ygvpycmjsrfxismnszir.supabase.co/storage/v1/object/public/avatars/2.png' // Placeholder for body_stage_2.png
+    level: 10, title: 'Атлет', 
+    imageUrl: 'https://ygvpycmjsrfxismnszir.supabase.co/storage/v1/object/public/avatars/2.png'
   },
   { 
-    level: 30, 
-    title: 'Ripped', 
-    imageUrl: 'https://ygvpycmjsrfxismnszir.supabase.co/storage/v1/object/public/avatars/3.png' // Placeholder for body_stage_3.png
+    level: 30, title: 'Машина', 
+    imageUrl: 'https://ygvpycmjsrfxismnszir.supabase.co/storage/v1/object/public/avatars/3.png'
   },
 ];
