@@ -49,6 +49,7 @@ export const TRANSLATIONS = {
     beginner: 'Novice',
     intermediate: 'Adept',
     advanced: 'Elite',
+    comingSoon: 'Coming Soon',
     
     // ... existing translations ...
     removeFriend: 'Remove Friend',
@@ -241,6 +242,7 @@ export const TRANSLATIONS = {
     beginner: 'Новичок',
     intermediate: 'Любитель',
     advanced: 'Элита',
+    comingSoon: 'Скоро',
 
     // ... existing translations ...
     removeFriend: 'Удалить друга',
