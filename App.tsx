@@ -51,6 +51,7 @@ const App: React.FC = () => {
       if (session) {
         Promise.all([fetchUserProfile(session.user), fetchGuilds()]).then(() => setIsLoading(false));
         listenForInvites(session.user.id);
+        listenForAcceptedInvites(session.user.id); // NEW: Listen for invites I sent
       } else {
         setIsLoading(false);
       }
@@ -62,12 +63,14 @@ const App: React.FC = () => {
         fetchUserProfile(session.user);
         fetchGuilds();
         listenForInvites(session.user.id);
+        listenForAcceptedInvites(session.user.id); // NEW
       } else if (!session) {
         setUser(null);
         setIsLoading(false);
       }
     });
 
+    // Realtime Guilds Listener
     const guildChannel = supabase.channel('public:guilds')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guilds' }, (payload) => {
             const newGuildRaw = payload.new as any;
@@ -76,12 +79,13 @@ const App: React.FC = () => {
                 name: newGuildRaw.name,
                 description: newGuildRaw.description,
                 icon: newGuildRaw.icon,
-                members: newGuildRaw.members,
-                maxMembers: newGuildRaw.max_members,
-                totalXp: newGuildRaw.total_xp,
+                members: newGuildRaw.members || 1,
+                maxMembers: newGuildRaw.max_members || 50,
+                totalXp: newGuildRaw.total_xp || 0,
                 rank: newGuildRaw.rank || 999
             };
             setGuilds(prev => {
+                // Prevent duplicates
                 if (prev.find(g => g.id === newGuild.id)) return prev;
                 return [...prev, newGuild];
             });
@@ -97,19 +101,65 @@ const App: React.FC = () => {
   const fetchGuilds = async () => {
     try {
       const { data, error } = await supabase.from('guilds').select('*').order('total_xp', { ascending: false });
-      if (error || !data) { 
-          if (guilds.length === 0) setGuilds(MOCK_GUILDS); 
-          return; 
+      
+      if (error) {
+          console.error("Error fetching guilds:", error);
+          // Only fall back to mock if there is an actual error, not just empty data
+          if (guilds.length === 0) setGuilds(MOCK_GUILDS);
+          return;
       }
-      setGuilds(data.map(g => ({ ...g, maxMembers: g.max_members, totalXp: g.total_xp })));
-    } catch (e) { if (guilds.length === 0) setGuilds(MOCK_GUILDS); }
+      
+      if (data) {
+        setGuilds(data.map(g => ({ ...g, maxMembers: g.max_members, totalXp: g.total_xp })));
+      }
+    } catch (e) { 
+        if (guilds.length === 0) setGuilds(MOCK_GUILDS); 
+    }
   };
 
+  // Listen for invites SENT TO ME
   const listenForInvites = (userId: string) => {
-      const channel = supabase.channel('public:workout_invites')
+      const channel = supabase.channel('public:workout_invites_received')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'workout_invites', filter: `receiver_id=eq.${userId}` }, (payload) => {
-            setIncomingInvite({ id: payload.new.id, senderId: payload.new.sender_id, senderName: 'Friend', workoutId: payload.new.workout_id, status: 'pending' });
+            setIncomingInvite({ id: payload.new.id, senderId: payload.new.sender_id, senderName: 'Partner', workoutId: payload.new.workout_id, status: 'pending' });
+            triggerNotification(t.friendRequestReceived || "New Workout Invite!");
         }).subscribe();
+      return () => { supabase.removeChannel(channel); };
+  };
+
+  // NEW: Listen for invites I SENT that get ACCEPTED
+  const listenForAcceptedInvites = (userId: string) => {
+      const channel = supabase.channel('public:workout_invites_sent')
+        .on('postgres_changes', { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'workout_invites', 
+            filter: `sender_id=eq.${userId}` 
+        }, async (payload) => {
+            const updatedInvite = payload.new;
+            if (updatedInvite.status === 'accepted') {
+                // Find the workout node to start
+                let foundNode: WorkoutNode | null = null;
+                // Search in all campaign paths
+                Object.values(CAMPAIGN_DATA).forEach(path => {
+                    const node = path.find(n => n.id === updatedInvite.workout_id);
+                    if (node) foundNode = node;
+                });
+
+                if (foundNode) {
+                    // Try to get receiver username for display
+                    let partnerName = 'Partner';
+                    const { data } = await supabase.from('profiles').select('username').eq('id', updatedInvite.receiver_id).single();
+                    if (data) partnerName = data.username;
+
+                    triggerNotification(`${t.startingWorkout} (${partnerName})`);
+                    setPartnerMode(partnerName);
+                    setActiveNode(foundNode);
+                    setView('workout');
+                }
+            }
+        }).subscribe();
+      
       return () => { supabase.removeChannel(channel); };
   };
 
@@ -329,18 +379,38 @@ const App: React.FC = () => {
       if (!user) return;
       try {
           const guildId = crypto.randomUUID();
+          
+          // Insert into DB
           const { data: newGuildData, error } = await supabase.from('guilds').insert([{
               id: guildId, name: data.name, description: data.description, icon: data.icon,
               members: 1, max_members: 30, total_xp: 0, rank: guilds.length + 1
           }]).select().single();
+          
           if (error) throw error;
+
+          // Update Profile
           await supabase.from('profiles').update({ guild_id: newGuildData.id }).eq('id', user.id);
 
-          const newGuildMapped: Guild = { ...newGuildData, maxMembers: newGuildData.max_members, totalXp: 0 };
+          // Update Local State IMMEDIATELY
+          const newGuildMapped: Guild = { 
+            id: newGuildData.id, 
+            name: newGuildData.name, 
+            description: newGuildData.description, 
+            icon: newGuildData.icon,
+            members: 1,
+            maxMembers: 30, 
+            totalXp: 0, 
+            rank: guilds.length + 1
+          };
+
           setUser(prev => prev ? ({ ...prev, guildId: newGuildData.id }) : null);
           setGuilds(prev => [...prev, newGuildMapped]);
+          
           triggerNotification("Guild Created!");
-      } catch (error: any) { triggerNotification("Error: " + error.message); }
+      } catch (error: any) { 
+          console.error("Guild creation error", error);
+          triggerNotification("Error: " + error.message); 
+      }
   };
 
   const handleBuyItem = (item: any) => { 
@@ -356,14 +426,36 @@ const App: React.FC = () => {
   
   const handleStartSharedWorkout = async (name: string, id: string) => { 
       if (!user) return;
-      // Simplification: Shared workout just picks first BB workout
-      const nextWorkout = CAMPAIGN_DATA[TrainingPath.BODYBUILDING][0];
+      // Simplification: Shared workout just picks first BB workout or active one
+      const nextWorkout = activeNode || CAMPAIGN_DATA[TrainingPath.BODYBUILDING][0];
       try {
           await supabase.from('workout_invites').insert({ sender_id: user.id, receiver_id: id, workout_id: nextWorkout.id, status: 'pending' });
           triggerNotification(`Invited ${name}!`);
       } catch (e) { triggerNotification("Failed to send invite."); }
   };
-  const acceptInvite = () => { if (incomingInvite) { setPartnerMode(incomingInvite.senderName); setIncomingInvite(null); handleNodeClick(CAMPAIGN_DATA[TrainingPath.BODYBUILDING][0]); } };
+
+  const acceptInvite = async () => { 
+      if (incomingInvite) { 
+          try {
+             await supabase.from('workout_invites').update({ status: 'accepted' }).eq('id', incomingInvite.id);
+             
+             // Find the workout
+             let foundNode = null;
+             Object.values(CAMPAIGN_DATA).forEach(path => {
+                const node = path.find(n => n.id === incomingInvite.workoutId);
+                if (node) foundNode = node;
+             });
+
+             setPartnerMode(incomingInvite.senderName || 'Partner'); 
+             if(foundNode) setActiveNode(foundNode);
+             setView('workout');
+             setIncomingInvite(null); 
+          } catch(e) {
+              console.error(e);
+              triggerNotification("Error joining session");
+          }
+      } 
+  };
 
   // --- RENDER ---
   if (isLoading) return <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center"><Loader2 className="w-12 h-12 text-amber-500 animate-spin mb-4" /><p className="text-slate-400 font-bold uppercase text-sm">{t.loading}</p></div>;
